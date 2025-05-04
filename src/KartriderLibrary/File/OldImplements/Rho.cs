@@ -21,7 +21,7 @@ namespace KartLibrary.File
         {
             (1.0d, "Rh layer spec 1.0"),
             (1.1d, "Rh layer spec 1.1"),
-            (1.2d, "Ch layer spec 1.2"),
+            (1.2d, "Ch layer spec 1.2"), //for EverPlanet
         };
 
         public double Version { get; private set; }
@@ -35,28 +35,29 @@ namespace KartLibrary.File
 
         public RhoDirectory RootDirectory { get; set; }
 
-        public Rho(string FileName)
+        public Rho(string fileName)
         {
-            if (!System.IO.File.Exists(FileName))
-                throw new FileNotFoundException($"Exception: Could't find the file:{FileName}.", FileName);
-            //Test
-            FileStream fileStream = new FileStream(FileName, FileMode.Open);
+            if (!System.IO.File.Exists(fileName))
+                throw new FileNotFoundException($"Exception: Could't find the file:{fileName}.", fileName);
+
+            FileStream fileStream = new FileStream(fileName, FileMode.Open);
 
             baseStream = new BufferedStream(fileStream, 4096); //Default: 4 KiB
-            this.FileName = FileName;
+
+            FileName = fileName;
             BinaryReader reader = new BinaryReader(baseStream);
-            FileInfo fileInfo = new FileInfo(FileName);
-            
+            FileInfo fileInfo = new FileInfo(fileName);
+
             // RhoFileKey = 0x93407EB1; //for pk_2D4AF218
             // RhoFileKey = 0x7C1B1939; //for pk_16258CA0
             // RhoFileKey = 0x7C1B1938; //for pk_16258C9F
             // RhoFileKey = 0xC12D80A1; //for pk_1B37F409
 
             // RhoFileKey = uint.Parse(fileInfo.Name.Replace("pk_", "").Replace(".chi", ""), NumberStyles.HexNumber) + 0x25F58C9A;
-            RhoFileKey = uint.Parse(fileInfo.Name.Replace("pk_", "").Replace(".chi", ""), NumberStyles.HexNumber) + 0x65F58C99;
+            // RhoFileKey = uint.Parse(fileInfo.Name.Replace("pk_", "").Replace(".chi", ""), NumberStyles.HexNumber) + 0x65F58C99;
             // RhoFileKey = uint.Parse(fileInfo.Name.Replace("pk_", "").Replace(".chi", ""), NumberStyles.HexNumber) + 0xA5F58C98;
             // RhoFileKey = uint.Parse(fileInfo.Name.Replace("pk_", "").Replace(".chi", ""), NumberStyles.HexNumber) + 0xE5F58C97;
-            
+
             // RhoFileKey = RhoKey.GetRhoKey(fileInfo.Name.Replace(".rho", ""));
 
             // Read Magic String
@@ -82,14 +83,34 @@ namespace KartLibrary.File
                     part2Data = RhoEncrypt.DecryptHeaderInfo(part2Data, RhoFileKey);
                     break;
                 case 1.2d:
-                    part2Data = RhoEncrypt.DecryptHeaderInfo(part2Data, RhoFileKey);
+                    uint baseKey = uint.Parse(fileInfo.Name.Replace("pk_", "").Replace(".chi", ""),
+                        NumberStyles.HexNumber);
+                    uint[] keyOffsets =
+                    {
+                        0x25F58C9A,
+                        0x65F58C99,
+                        0xA5F58C98,
+                        0xE5F58C97
+                    };
+                    foreach (uint key in keyOffsets)
+                    {
+                        RhoFileKey = baseKey + key;
+
+                        byte[] temp = RhoEncrypt.DecryptHeaderInfo(part2Data, RhoFileKey);
+                        int magicCode = BitConverter.ToInt32(temp, 4);
+                        if (magicCode == 0x10002)
+                        {
+                            part2Data = temp;
+                            break;
+                        }
+                    }
+
                     break;
             }
 
-            int BlockCount = 0;
-            byte[] BlockInfoKeyOld = new byte[0]; // For 1.0 version
-            uint BlockInfoKey = 0; // For 1.1 version
-            int DataHash = 0;
+            int blockCount;
+            byte[] blockInfoKeyOld = new byte[0]; // For 1.0 version
+            uint blockInfoKey; // For 1.1 version
 
             using (MemoryStream ms = new MemoryStream(part2Data))
             {
@@ -99,29 +120,28 @@ namespace KartLibrary.File
                 // if (part2Hash != checkHash)
                 // throw new NotSupportedException("Exception: This file was modified. [ Part 2 Hash not euqal ]");
 
-                int MagicCode = br.ReadInt32();
+                int magicCode = br.ReadInt32();
 
-                if (Version == 1.0d && MagicCode != 0x00010000 ||
-                    Version == 1.1d && MagicCode != 0x00010001 ||
-                    Version == 1.2d && MagicCode != 0x00010002
-                   )
+                if (Version == 1.0d && magicCode != 0x10000 ||
+                    Version == 1.1d && magicCode != 0x10001 ||
+                    Version == 1.2d && magicCode != 0x10002)
                     throw new NotSupportedException("Exception: This file is not Rho File. [ Header check failure ]");
 
-                BlockCount = br.ReadInt32(); // 10
+                blockCount = br.ReadInt32(); // 10
                 BlockWhiteningKey = br.ReadUInt32(); //14 // BlockInfoKey = RhoFileKey ^  BlockWhiteningKey. 
-                BlockInfoKey = RhoFileKey ^ BlockWhiteningKey;
+                blockInfoKey = RhoFileKey ^ BlockWhiteningKey;
 
                 switch (Version)
                 {
                     case 1.0d:
-                        BlockInfoKeyOld = br.ReadBytes(32);
+                        blockInfoKeyOld = br.ReadBytes(32);
                         break;
                     case 1.1d:
                     case 1.2d:
                     {
                         int u1a = br.ReadInt32(); //=1
                         int u2a = br.ReadInt32(); //=RhoKey - 397E40C3
-                        DataHash = br.ReadInt32(); // in aaa.pk file
+                        br.ReadInt32(); // in aaa.pk file
                         //Debug.Print($"DataHash: {DataHash:x8}");
                         break;
                     }
@@ -129,27 +149,27 @@ namespace KartLibrary.File
 
                 int endMagicCode = br.ReadInt32(); // = FC1F9778
 
-                Blocks = new Dictionary<uint, RhoDataInfo>(BlockCount);
+                Blocks = new Dictionary<uint, RhoDataInfo>(blockCount);
             }
 
             baseStream.Seek(0x100, SeekOrigin.Begin);
             // Part 3
-            for (int i = 0; i < BlockCount; i++)
+            for (int i = 0; i < blockCount; i++)
             {
                 switch (Version)
                 {
                     case 1.0d:
                     {
-                        var blockInfo = reader.ReadBlockInfo10(BlockInfoKeyOld);
+                        var blockInfo = reader.ReadBlockInfo10(blockInfoKeyOld);
                         Blocks.Add(blockInfo.Index, blockInfo);
                         break;
                     }
                     case 1.1d:
                     case 1.2d:
                     {
-                        var blockInfo = reader.ReadBlockInfo(BlockInfoKey);
+                        var blockInfo = reader.ReadBlockInfo(blockInfoKey);
                         Blocks.Add(blockInfo.Index, blockInfo);
-                        BlockInfoKey++;
+                        blockInfoKey++;
                         break;
                     }
                 }

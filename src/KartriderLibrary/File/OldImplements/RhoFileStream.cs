@@ -4,8 +4,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.IO.Compression;
-
 using KartLibrary.Encrypt;
+
 namespace KartLibrary.File
 {
     public class RhoFileStream : Stream
@@ -36,16 +36,21 @@ namespace KartLibrary.File
             RhoFileInfo rhoFileInfo = rho.GetFile(path);
             if (rhoFileInfo == null)
                 throw new FileNotFoundException($"File: {path} cannot be found in this rho file.", path);
+
             _baseFile = rhoFileInfo;
             _baseRho = rhoFileInfo.BaseRho;
+
             if (_baseRho == null)
                 throw new InvalidOperationException("Rho has been disposed.");
+
             _baseBlockInfo = _baseRho.GetBlockInfo(_baseFile.FileBlockIndex);
             _baseStream = _baseRho.baseStream;
             _baseStream.Seek(_baseBlockInfo.Offset, SeekOrigin.Begin);
+
             if (_baseBlockInfo.BlockProperty == RhoBlockProperty.PartialEncrypted)
             {
-                _baseDecryptStream = new RhoDecryptStream(_baseRho.baseStream, RhoKey.GetDataKey(_baseRho.GetFileKey(), _baseFile), DecryptStreamSeekMode.KeepBasePosition);
+                _baseDecryptStream = new RhoDecryptStream(_baseRho.baseStream,
+                    RhoKey.GetDataKey(_baseRho.GetFileKey(), _baseFile), DecryptStreamSeekMode.KeepBasePosition);
                 _nextBlockInfo = _baseRho.GetBlockInfo(_baseFile.FileBlockIndex + 1);
             }
             else
@@ -54,9 +59,11 @@ namespace KartLibrary.File
                 {
                     _baseStream = new ZLibStream(_baseStream, CompressionMode.Decompress);
                 }
+
                 if ((_baseBlockInfo.BlockProperty & RhoBlockProperty.FullEncrypted) != 0)
                 {
-                    _baseStream = new RhoDecryptStream(_baseStream, RhoKey.GetDataKey(_baseRho.GetFileKey(), _baseFile), DecryptStreamSeekMode.ResetBasePosition);
+                    _baseStream = new RhoDecryptStream(_baseStream, RhoKey.GetDataKey(_baseRho.GetFileKey(), _baseFile),
+                        DecryptStreamSeekMode.ResetBasePosition);
                 }
             }
         }
@@ -74,7 +81,8 @@ namespace KartLibrary.File
             _baseStream.Seek(_baseBlockInfo.Offset, SeekOrigin.Begin);
             if (_baseBlockInfo.BlockProperty == RhoBlockProperty.PartialEncrypted)
             {
-                _baseDecryptStream = new RhoDecryptStream(_baseRho.baseStream, RhoKey.GetDataKey(_baseRho.GetFileKey(), _baseFile), DecryptStreamSeekMode.KeepBasePosition);
+                _baseDecryptStream = new RhoDecryptStream(_baseRho.baseStream,
+                    RhoKey.GetDataKey(_baseRho.GetFileKey(), _baseFile), DecryptStreamSeekMode.KeepBasePosition);
                 _nextBlockInfo = _baseRho.GetBlockInfo(_baseFile.FileBlockIndex + 1);
             }
             else
@@ -83,16 +91,17 @@ namespace KartLibrary.File
                 {
                     _baseStream = new ZLibStream(_baseStream, CompressionMode.Decompress);
                 }
+
                 if ((_baseBlockInfo.BlockProperty & RhoBlockProperty.FullEncrypted) != 0)
                 {
-                    _baseStream = new RhoDecryptStream(_baseStream, RhoKey.GetDataKey(_baseRho.GetFileKey(), _baseFile), DecryptStreamSeekMode.ResetBasePosition);
+                    _baseStream = new RhoDecryptStream(_baseStream, RhoKey.GetDataKey(_baseRho.GetFileKey(), _baseFile),
+                        DecryptStreamSeekMode.ResetBasePosition);
                 }
             }
         }
 
         public override void Flush()
         {
-
         }
 
         public override int Read(byte[] buffer, int offset, int count)
@@ -112,6 +121,7 @@ namespace KartLibrary.File
                         _baseStream.Seek(_nextBlockInfo.Offset, SeekOrigin.Begin);
                         _readCount += _baseStream.Read(buffer, offset + _readCount, readLen - encryptLen);
                     }
+
                     Position += _readCount;
                 }
                 else
@@ -121,8 +131,10 @@ namespace KartLibrary.File
                     _baseStream.Seek(_nextBlockInfo.Offset, SeekOrigin.Begin);
                     _readCount = _baseStream.Read(buffer, offset, readLen);
                 }
+
                 return _readCount;
             }
+
             return _baseStream.Read(buffer, offset, readLen);
         }
 

@@ -183,19 +183,19 @@ namespace KartLibrary.Encrypt
 
         public static uint GetDataKey(uint RhoKey, RhoFileInfo fileInfo)
         {
-            byte[] strData = Encoding.GetEncoding("UTF-16").GetBytes(fileInfo.Name);
-            uint key = Adler.Adler32(0, strData, 0, strData.Length);
-            key += (uint)fileInfo.ExtNum;
-            key += (RhoKey - 0x756DE654);
+            uint key = Adler.Hash(fileInfo.Name, (uint)fileInfo.ExtNum); //for EverPlanet
+            key += RhoKey - 0x756DE654;
             return key;
         }
 
         public static uint GetFileKey(uint RhoKey, string fileName, uint extNum)
         {
-            byte[] strData = Encoding.GetEncoding("UTF-16").GetBytes(fileName);
+            uint key = Adler.Hash(fileName, extNum); //for EverPlanet
+            key += RhoKey - 0x756DE654;
+/*            byte[] strData = Encoding.GetEncoding("UTF-16").GetBytes(fileName);
             uint key = Adler.Adler32(0, strData, 0, strData.Length);
             key += extNum;
-            key += (RhoKey - 0x756DE654);
+            key += RhoKey - 0x756DE654;*/
             return key;
         }
 
@@ -204,7 +204,7 @@ namespace KartLibrary.Encrypt
             byte[] strData = Encoding.GetEncoding("UTF-16").GetBytes(fileInfo.Name);
             uint key = Adler.Adler32(0, strData, 0, strData.Length);
             key += (uint)fileInfo.ExtNum;
-            key += (RhoKey - 0x7E2AF33D);
+            key += RhoKey - 0x7E2AF33D;
             return key;
         }
 

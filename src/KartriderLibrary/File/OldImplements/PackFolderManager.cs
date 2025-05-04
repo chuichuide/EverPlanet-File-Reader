@@ -15,6 +15,7 @@ namespace KartLibrary.File
     public class PackFolderManager
     {
         public bool Initizated { get; private set; } = false;
+
         private struct ProcessObj
         {
             public string Path;
@@ -26,16 +27,15 @@ namespace KartLibrary.File
 
         public PackFolderManager()
         {
-
         }
 
         //private List<PackFolderInfo> RootFolder { get; init; } = new List<PackFolderInfo>();
 
-        private PackFolderInfo RootFolder = new PackFolderInfo();
+        private PackFolderInfo RootFolder = new();
 
-        private LinkedList<Rho> RhoPool { get; init; } = new LinkedList<Rho>();
+        private LinkedList<Rho> RhoPool { get; } = new();
 
-        private LinkedList<Rho5> Rho5Pool { get; init; } = new LinkedList<Rho5>();
+        private LinkedList<Rho5> Rho5Pool { get; } = new();
 
         public void OpenDataFolder(string aaaPkFilePath)
         {
@@ -56,6 +56,7 @@ namespace KartLibrary.File
             {
                 throw new NotSupportedException($"aaa.pk file not support.");
             }
+
             foreach (BinaryXmlTag subtag in rootTag.Children)
             {
                 ProcessQue.Enqueue(new ProcessObj
@@ -65,6 +66,7 @@ namespace KartLibrary.File
                     Path = ""
                 });
             }
+
             while (ProcessQue.Count > 0)
             {
                 ProcessObj currectProcObj = ProcessQue.Dequeue();
@@ -76,7 +78,9 @@ namespace KartLibrary.File
                         PackFolderInfo newSubFolder = new PackFolderInfo()
                         {
                             FolderName = currectProcObj.Parent is null ? $"{subname}_" : subname,
-                            FullName = currectProcObj.Parent is null ? $"{subname}_" : $"{currectProcObj.Path}/{subname}",
+                            FullName = currectProcObj.Parent is null
+                                ? $"{subname}_"
+                                : $"{currectProcObj.Path}/{subname}",
                             ParentFolder = currectProcObj.Parent
                         };
                         foreach (BinaryXmlTag subTag in currentTag.Children)
@@ -89,6 +93,7 @@ namespace KartLibrary.File
                             };
                             ProcessQue.Enqueue(newProcObj);
                         }
+
                         if (currectProcObj.Parent is not null)
                             currectProcObj.Parent.Folders.Add(newSubFolder);
                         else
@@ -112,6 +117,7 @@ namespace KartLibrary.File
                             else
                                 currectProcObj.Parent.Folders.Add(NewFolder);
                         }
+
                         Rho rhoFile = new Rho($"{fileInfo.DirectoryName}\\{fileName}");
                         Queue<(PackFolderInfo, RhoDirectory)> dirQue = new Queue<(PackFolderInfo, RhoDirectory)>();
                         RhoDirectory rootDir = rhoFile.RootDirectory;
@@ -132,6 +138,7 @@ namespace KartLibrary.File
                                 };
                                 currectPackFolder.Files.Add(newFileInfo);
                             }
+
                             foreach (RhoDirectory dir in curObj.Item2.GetDirectories())
                             {
                                 PackFolderInfo subDirInfo = new PackFolderInfo()
@@ -144,10 +151,12 @@ namespace KartLibrary.File
                                 dirQue.Enqueue((subDirInfo, dir));
                             }
                         }
+
                         RhoPool.AddLast(rhoFile);
                         break;
                 }
             }
+
             CountryCode regionCode = CountryCode.None;
 
             PackFolderInfo[] ZETA_Folders = GetDirectories("zeta_");
@@ -193,28 +202,32 @@ namespace KartLibrary.File
                             if (foundFolder is null)
                             {
                                 currentFolder.Folders.Add(
-                                foundFolder = new PackFolderInfo()
-                                {
-                                    FolderName = part,
-                                    ParentFolder = currentFolder,
-                                    FullName = currentFolder.FullName == "" ? part : $"{currentFolder.FullName}/{part}",
-                                });
+                                    foundFolder = new PackFolderInfo()
+                                    {
+                                        FolderName = part,
+                                        ParentFolder = currentFolder,
+                                        FullName = currentFolder.FullName == ""
+                                            ? part
+                                            : $"{currentFolder.FullName}/{part}",
+                                    });
                             }
+
                             currentFolder = foundFolder;
                         }
+
                         depth--;
                     }
                 }
-
             }
+
             for (int i = 0; i < RootFolder.Folders.Count; i++)
                 RootFolder.Folders[i].ParentFolder = RootFolder;
             Initizated = true;
         }
 
-        public async Task OpenDataFolderAsync(string aaaPkFilePath, ProgressChangedEventHandler? onProgressChange = null)
+        public async Task OpenDataFolderAsync(string aaaPkFilePath,
+            ProgressChangedEventHandler? onProgressChange = null)
         {
-
         }
 
         public void OpenSingleFile(string rhoFile)
@@ -252,6 +265,7 @@ namespace KartLibrary.File
                     };
                     currectPackFolder.Files.Add(newFileInfo);
                 }
+
                 foreach (RhoDirectory dir in curObj.Item2.GetDirectories())
                 {
                     PackFolderInfo subDirInfo = new PackFolderInfo()
@@ -264,6 +278,7 @@ namespace KartLibrary.File
                     dirQue.Enqueue((subDirInfo, dir));
                 }
             }
+
             RhoPool.AddLast(rho);
             for (int i = 0; i < RootFolder.Folders.Count; i++)
                 RootFolder.Folders[i].ParentFolder = RootFolder;
@@ -307,6 +322,7 @@ namespace KartLibrary.File
                         };
                         currectPackFolder.Files.Add(newFileInfo);
                     }
+
                     foreach (RhoDirectory dir in curObj.Item2.GetDirectories())
                     {
                         PackFolderInfo subDirInfo = new PackFolderInfo()
@@ -319,6 +335,7 @@ namespace KartLibrary.File
                         dirQue.Enqueue((subDirInfo, dir));
                     }
                 }
+
                 RhoPool.AddLast(rho);
                 for (int i = 0; i < RootFolder.Folders.Count; i++)
                     RootFolder.Folders[i].ParentFolder = RootFolder;
@@ -334,11 +351,13 @@ namespace KartLibrary.File
                 RhoPool.First?.Value.Dispose();
                 RhoPool.RemoveFirst();
             }
+
             while (Rho5Pool.Count > 0)
             {
                 Rho5Pool.First?.Value.Dispose();
                 Rho5Pool.RemoveFirst();
             }
+
             RootFolder = new PackFolderInfo()
             {
                 FolderName = "",
@@ -360,6 +379,7 @@ namespace KartLibrary.File
                     return null;
                 currentFindFolders = findFolder.Folders;
             }
+
             return currentFindFolders.ToArray();
         }
 
@@ -382,6 +402,7 @@ namespace KartLibrary.File
                 currentFolder = currentFolder.Folders.Find(x => x.FolderName == path);
                 depth--;
             }
+
             return null;
         }
 
@@ -405,9 +426,11 @@ namespace KartLibrary.File
                     find_files = currentFolder.Files;
                     break;
                 }
+
                 currentFolder = currentFolder.Folders.Find(x => x.FolderName == path);
                 depth--;
             }
+
             PackFileInfo? output_file = find_files.Find(x => x.FileName == path_sp[^1]);
             if (output_file is not null)
                 return output_file;
@@ -419,16 +442,18 @@ namespace KartLibrary.File
         {
             return (PackFolderInfo)RootFolder.Clone();
         }
-
     }
+
     public class PackFolderInfo : ICloneable
     {
         // Properties
         public string FolderName { get; set; }
         public string FullName { get; set; }
         public PackFolderInfo? ParentFolder { get; internal set; }
-        internal List<PackFolderInfo> Folders { get; init; } = new List<PackFolderInfo>();
-        internal List<PackFileInfo> Files { get; init; } = new List<PackFileInfo>();
+        internal List<PackFolderInfo> Folders { get; init; } = new();
+
+        internal List<PackFileInfo> Files { get; init; } = new();
+
         // Constructors
         public PackFolderInfo()
         {
@@ -436,7 +461,9 @@ namespace KartLibrary.File
             FullName = "";
             ParentFolder = null;
         }
-        public PackFolderInfo(string folderName, string fullName, PackFolderInfo? parentFolder, IEnumerable<PackFolderInfo> folders, IEnumerable<PackFileInfo> files)
+
+        public PackFolderInfo(string folderName, string fullName, PackFolderInfo? parentFolder,
+            IEnumerable<PackFolderInfo> folders, IEnumerable<PackFileInfo> files)
         {
             FolderName = folderName;
             FullName = fullName;
@@ -463,15 +490,18 @@ namespace KartLibrary.File
                 FullName = FullName,
                 ParentFolder = ParentFolder
             };
-            Queue<(PackFolderInfo parent, PackFolderInfo proc_folder)> queue = new Queue<(PackFolderInfo parent, PackFolderInfo proc_folder)>();
+            Queue<(PackFolderInfo parent, PackFolderInfo proc_folder)> queue =
+                new Queue<(PackFolderInfo parent, PackFolderInfo proc_folder)>();
             foreach (var sub_folder in Folders)
             {
                 queue.Enqueue((clone_obj, sub_folder));
             }
+
             foreach (var sub_file in Files)
             {
                 clone_obj.Files.Add((PackFileInfo)sub_file.Clone());
             }
+
             while (queue.Count > 0)
             {
                 var curent_proc_obj = queue.Dequeue();
@@ -488,22 +518,27 @@ namespace KartLibrary.File
                 {
                     queue.Enqueue((cur_clone_obj, obj_sub_folder));
                 }
+
                 foreach (var obj_sub_file in curent_proc_obj.proc_folder.Files)
                 {
                     cur_clone_obj.Files.Add((PackFileInfo)obj_sub_file.Clone());
                 }
             }
+
             return clone_obj;
         }
 
         // Operator Overloads
         public static bool operator ==(PackFolderInfo objA, PackFolderInfo objB)
         {
-            return objA is not null && objB is not null && objA.FullName is not null && objB.FullName is not null && objA.FullName == objB.FullName;
+            return objA is not null && objB is not null && objA.FullName is not null && objB.FullName is not null &&
+                   objA.FullName == objB.FullName;
         }
+
         public static bool operator !=(PackFolderInfo objA, PackFolderInfo objB)
         {
-            return !(objA is not null && objB is not null && objA.FullName is not null && objB.FullName is not null && objA.FullName == objB.FullName);
+            return !(objA is not null && objB is not null && objA.FullName is not null && objB.FullName is not null &&
+                     objA.FullName == objB.FullName);
         }
 
         // Overrides
@@ -524,6 +559,7 @@ namespace KartLibrary.File
             return base.GetHashCode() + FullName.GetHashCode();
         }
     }
+
     public class PackFileInfo : ICloneable
     {
         public string FileName { get; set; }
@@ -545,6 +581,7 @@ namespace KartLibrary.File
             else
                 return null;
         }
+
         public object Clone()
         {
             PackFileInfo clone_obj = new PackFileInfo()
@@ -561,11 +598,14 @@ namespace KartLibrary.File
         //Operator Overloads
         public static bool operator ==(PackFileInfo objA, PackFileInfo objB)
         {
-            return objA is not null && objB is not null && objA.FullName is not null && objB.FullName is not null && objA.FullName == objB.FullName;
+            return objA is not null && objB is not null && objA.FullName is not null && objB.FullName is not null &&
+                   objA.FullName == objB.FullName;
         }
+
         public static bool operator !=(PackFileInfo objA, PackFileInfo objB)
         {
-            return !(objA is not null && objB is not null && objA.FullName is not null && objB.FullName is not null && objA.FullName == objB.FullName);
+            return !(objA is not null && objB is not null && objA.FullName is not null && objB.FullName is not null &&
+                     objA.FullName == objB.FullName);
         }
 
         // Overrides

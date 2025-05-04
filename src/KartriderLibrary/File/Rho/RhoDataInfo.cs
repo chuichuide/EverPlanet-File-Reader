@@ -30,6 +30,7 @@ namespace KartLibrary.File
             return (int)Index;
         }
     }
+
     //Extension
     public static class RhoBlockReader
     {
@@ -40,6 +41,7 @@ namespace KartLibrary.File
             //Debug.Print($"adler_raw: {Adler.Adler32(0, blockInfoData, 0, blockInfoData.Length):x8}");
             blockInfoData = RhoEncrypt.DecryptHeaderInfo(blockInfoData, Key);
             uint hash = Adler.Adler32(0, blockInfoData, 0, blockInfoData.Length);
+
             using (MemoryStream ms = new MemoryStream(blockInfoData))
             {
                 BinaryReader msReader = new BinaryReader(ms);
@@ -50,6 +52,7 @@ namespace KartLibrary.File
                 output.BlockProperty = (RhoBlockProperty)msReader.ReadInt32();
                 output.Checksum = msReader.ReadUInt32();
             }
+
             return output;
         }
 
@@ -73,37 +76,40 @@ namespace KartLibrary.File
             return output;
         }
 
-        public static byte[] ReadBlock(this BinaryReader reader, Rho RhoFile, uint BlockIndex, uint Key)
+        public static byte[] ReadBlock(this BinaryReader reader, Rho rhoFile, uint blockIndex, uint key)
         {
-            RhoDataInfo BlockInfo = RhoFile.GetBlockInfo(BlockIndex);
-            if (BlockInfo is null)
-                return null;
-            reader.BaseStream.Seek(BlockInfo.Offset, SeekOrigin.Begin);
-            byte[] BlockData = reader.ReadBytes(BlockInfo.DataSize);
+            RhoDataInfo blockInfo = rhoFile.GetBlockInfo(blockIndex);
+
+            reader.BaseStream.Seek(blockInfo.Offset, SeekOrigin.Begin);
+            byte[] blockData = reader.ReadBytes(blockInfo.DataSize);
             //Debug.Print($"B:{BlockIndex:x8}: {Adler.Adler32(0, BlockData, 0, BlockData.Length):x8}");
-            if ((BlockInfo.BlockProperty & RhoBlockProperty.Compressed) == RhoBlockProperty.Compressed)
+
+            if ((blockInfo.BlockProperty & RhoBlockProperty.Compressed) == RhoBlockProperty.Compressed)
             {
-                using (MemoryStream ms = new MemoryStream(BlockData))
+                using (MemoryStream ms = new MemoryStream(blockData))
                 {
-                    BlockData = new byte[BlockInfo.UncompressedSize];
+                    blockData = new byte[blockInfo.UncompressedSize];
                     Ionic.Zlib.ZlibStream ds = new Ionic.Zlib.ZlibStream(ms, Ionic.Zlib.CompressionMode.Decompress);
-                    ds.Read(BlockData, 0, BlockData.Length);
+                    ds.Read(blockData, 0, blockData.Length);
                 }
             }
-            if ((BlockInfo.BlockProperty & RhoBlockProperty.PartialEncrypted) == RhoBlockProperty.PartialEncrypted) // Encrypted or PartialEncrypted
+
+            if ((blockInfo.BlockProperty & RhoBlockProperty.PartialEncrypted) ==
+                RhoBlockProperty.PartialEncrypted) // Encrypted or PartialEncrypted
             {
-                RhoEncrypt.DecryptData(Key, BlockData, 0, BlockData.Length);
+                RhoEncrypt.DecryptData(key, blockData, 0, blockData.Length);
             }
-            if (BlockInfo.BlockProperty == RhoBlockProperty.PartialEncrypted) // PartialEncrypted
+
+            if (blockInfo.BlockProperty == RhoBlockProperty.PartialEncrypted) // PartialEncrypted
             {
-                RhoDataInfo secPartInfo = RhoFile.GetBlockInfo(BlockIndex + 1);
-                if (secPartInfo is null)
-                    return BlockData;
-                Array.Resize(ref BlockData, BlockInfo.DataSize + secPartInfo.DataSize);
-                reader.BaseStream.Read(BlockData, BlockInfo.DataSize, secPartInfo.DataSize);
+                RhoDataInfo secPartInfo = rhoFile.GetBlockInfo(blockIndex + 1);
+                Array.Resize(ref blockData, blockInfo.DataSize + secPartInfo.DataSize);
+                reader.BaseStream.Read(blockData, blockInfo.DataSize, secPartInfo.DataSize);
             }
+
             //Debug.Print($"A:{BlockIndex:x8}: {Adler.Adler32(0, BlockData, 0, BlockData.Length):x8}");
-            return BlockData;
+
+            return blockData;
         }
     }
 

@@ -22,7 +22,8 @@ namespace KartLibrary.Data
                 long initialPos = bw.BaseStream.Position;
                 const byte checkCode = 0x53;
                 byte ProcessMode = (byte)((Encrypted ? 2 : 0) | (Compressed ? 1 : 0));
-                uint Hash = Adler.Adler32(0, Data, 0, Data.Length); ;
+                uint Hash = Adler.Adler32(0, Data, 0, Data.Length);
+                ;
                 int DecompressSize = Data.Length;
                 byte[] processedData = Data;
                 if (Compressed)
@@ -34,10 +35,12 @@ namespace KartLibrary.Data
                         processedData = ms.ToArray();
                     }
                 }
+
                 if (Encrypted)
                 {
                     processedData = RhoEncrypt.DecryptData(EncryptKey, processedData);
                 }
+
                 bw.Write(checkCode);
                 bw.Write(ProcessMode);
                 bw.Write(Hash);
@@ -58,18 +61,25 @@ namespace KartLibrary.Data
                 byte checkCode = br.ReadByte();
                 if (checkCode != 0x53)
                     throw new Exception("It is not KRData Format.");
+
                 byte ProcessMode = br.ReadByte();
                 uint Hash = br.ReadUInt32();
+
                 bool Encrypted = (ProcessMode & 2) == 2;
                 bool Compressed = (ProcessMode & 1) == 1;
+
                 uint EncryptKey = Encrypted ? br.ReadUInt32() : 0;
                 int DecompressSize = Compressed ? br.ReadInt32() : 0;
+
                 byte[] originalData = br.ReadBytes((int)(OriginalData.Length - br.BaseStream.Position));
                 byte[] processedData = originalData;
+
                 if (Encrypted)
                 {
                     processedData = RhoEncrypt.DecryptData(EncryptKey, processedData);
                 }
+
+                //EverPlanet不使用ZLib和任何壓縮方式
                 if (Compressed)
                 {
                     using (MemoryStream mss = new MemoryStream(processedData))
@@ -79,9 +89,11 @@ namespace KartLibrary.Data
                         zs.Read(processedData, 0, processedData.Length);
                     }
                 }
+
                 uint CheckHash = Adler.Adler32(0, processedData, 0, processedData.Length);
                 if (CheckHash != Hash)
                     throw new Exception("Exception: KRData hash is not qualified.");
+
                 return processedData;
             }
         }
@@ -90,28 +102,29 @@ namespace KartLibrary.Data
         public static byte[] ReadAAAData(this BinaryReader br, int TotalLength)
         {
             long initialPos = br.BaseStream.Position;
-            
+
             byte checkCode = br.ReadByte();
             if (checkCode != 0x53)
                 throw new Exception("It is not AAAData Format.");
-            
+
             byte ProcessMode = br.ReadByte();
             uint Hash = br.ReadUInt32();
-            
+
             bool Encrypted = (ProcessMode & 2) == 2;
             bool Compressed = (ProcessMode & 1) == 1;
-            
+
             uint EncryptKey = Encrypted ? br.ReadUInt32() : 0;
             int DecompressSize = Compressed ? br.ReadInt32() : 0;
-            
+
             byte[] originalData = br.ReadBytes((int)(TotalLength - (br.BaseStream.Position - initialPos)));
             byte[] processedData = originalData;
-            
+
             if (Encrypted)
             {
                 processedData = RhoEncrypt.DecryptData(EncryptKey, processedData);
             }
-            
+
+            //EverPlanet不使用ZLib和任何壓縮方式
             if (Compressed)
             {
                 using MemoryStream ms = new MemoryStream(processedData);
@@ -119,22 +132,26 @@ namespace KartLibrary.Data
                 Ionic.Zlib.ZlibStream zs = new Ionic.Zlib.ZlibStream(ms, Ionic.Zlib.CompressionMode.Decompress);
                 zs.ReadExactly(processedData, 0, processedData.Length);
             }
-            
+
             uint CheckHash = Adler.Adler32(0, processedData, 0, processedData.Length);
             if (CheckHash != Hash)
                 throw new Exception("Exception: KRData hash is not qualified.");
-            
+
             return processedData;
         }
 
-        public static int WriteKRData(this BinaryWriter bw, byte[] Data, bool Encrypted, bool Compressed, uint EncryptKey = 0)
+        public static int WriteKRData(this BinaryWriter bw, byte[] Data, bool Encrypted, bool Compressed,
+            uint EncryptKey = 0)
         {
             long initialPos = bw.BaseStream.Position;
             const byte checkCode = 0x53;
             byte ProcessMode = (byte)((Encrypted ? 2 : 0) | (Compressed ? 1 : 0));
-            uint Hash = Adler.Adler32(0, Data, 0, Data.Length); ;
+            uint Hash = Adler.Adler32(0, Data, 0, Data.Length);
+            ;
             int DecompressSize = Data.Length;
             byte[] processedData = Data;
+            
+            //EverPlanet不使用ZLib和任何壓縮方式
             if (Compressed)
             {
                 using (MemoryStream ms = new MemoryStream())
@@ -144,20 +161,24 @@ namespace KartLibrary.Data
                     processedData = ms.ToArray();
                 }
             }
+
             if (Encrypted)
             {
                 processedData = RhoEncrypt.DecryptData(EncryptKey, processedData);
             }
+
             bw.Write(checkCode);
             bw.Write(ProcessMode);
             bw.Write(Hash);
+            
             if (Encrypted)
                 bw.Write(EncryptKey);
+            
             if (Compressed)
                 bw.Write(DecompressSize);
+            
             bw.Write(processedData);
             return (int)(bw.BaseStream.Position - initialPos);
         }
-
     }
 }

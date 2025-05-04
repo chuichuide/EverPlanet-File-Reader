@@ -9,17 +9,41 @@ namespace KartLibrary.IO
     public static class Adler
     {
         public const uint AdlerModulo = 65521;
+
+/*        public static uint Hash(byte[] Name)
+        {
+            uint hash = 0;
+            foreach (char c in Name)
+            {
+                hash = c + 0x1003F * hash;
+            }
+
+            return hash ^ 0x626D6C;//bml
+        }*/
+
+        public static uint Hash(String Name, uint ExtNum)
+        {
+            uint hash = 0;
+            foreach (char c in Name)
+            {
+                hash = c + 0x1003F * hash;
+            }
+            
+            return hash ^ ExtNum;
+        }
+
         public static uint Adler32(uint adler, byte[] buffer, int offset, int count)
         {
             if (buffer.Length < (offset + count))
                 throw new Exception("buffer is small.");
             uint a = adler & 0xFFFFu;
             uint b = (adler >> 16) & 0xFFFFu;
-            for(int i = 0; i < count; i++)
+            for (int i = 0; i < count; i++)
             {
                 a = (a + buffer[offset + i]) % AdlerModulo;
                 b = (b + a) % AdlerModulo;
             }
+
             return (b << 16) | a;
         }
 
@@ -32,6 +56,7 @@ namespace KartLibrary.IO
                 a = (a + buffer[offset + i]) % AdlerModulo;
                 b = (b + a) % AdlerModulo;
             }
+
             return (b << 16) | a;
         }
     }

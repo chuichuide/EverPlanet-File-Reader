@@ -24,6 +24,7 @@ namespace KartLibrary.File
     public partial class RhoArchive : IRhoArchive<RhoFolder, RhoFile>
     {
         #region Members
+
         private int _layerVersion; // 1.0 = 0, 1.1 = 1
         private FileStream? _rhoStream;
 
@@ -39,13 +40,16 @@ namespace KartLibrary.File
         private bool _disposed;
         private bool _closed;
         private bool _locked; // if this instance is locked, calling any methods of this instance is not allowed.
+
         #endregion
 
         #region Properties
+
         /// <summary>
         /// Root folder of current <see cref="RhoArchive"/>
         /// </summary>
         public RhoFolder RootFolder => _rootFolder;
+
         public bool IsClosed => _closed;
 
         /// <summary>
@@ -53,9 +57,11 @@ namespace KartLibrary.File
         /// calling any method of this instance is not allowed until the asynchronous method that sets lock is done.
         /// </summary>
         public bool IsLocked => _locked;
+
         #endregion
 
         #region Constructors
+
         /// <summary>
         /// Constructs a new instance of <see cref="RhoArchive"/>. 
         /// </summary>
@@ -66,9 +72,11 @@ namespace KartLibrary.File
             _dataInfoMap = new Dictionary<uint, RhoDataInfo>();
             _closed = true;
         }
+
         #endregion
 
         #region Methods
+
         /// <summary>
         /// Opens Rho file.
         /// </summary>
@@ -78,16 +86,17 @@ namespace KartLibrary.File
         /// <exception cref="Exception"></exception>
         public void Open(string filePath)
         {
-            if(!System.IO.File.Exists(filePath))
+            if (!System.IO.File.Exists(filePath))
                 throw new FileNotFoundException($"");
             if (!_closed)
-                throw new Exception("This RhoArchive instance has opened the other rho file. You should close the opened file to do this operation.");
+                throw new Exception(
+                    "This RhoArchive instance has opened the other rho file. You should close the opened file to do this operation.");
             _rhoStream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
             if (_rhoStream.Length < 0x80)
                 throw new InvalidOperationException();
 
             _rhoKey = RhoKey.GetRhoKey(Path.GetFileNameWithoutExtension(filePath));
-            
+
             BinaryReader reader = new BinaryReader(_rhoStream);
 
             // Checks identifier
@@ -101,6 +110,7 @@ namespace KartLibrary.File
                     layerVersion = i;
                     break;
                 }
+
             if (layerVersion < 0)
                 throw new Exception();
             else
@@ -110,11 +120,11 @@ namespace KartLibrary.File
             // Read rho archive info
             _rhoStream.Seek(0x80, SeekOrigin.Begin);
             byte[] rhoArchiveInfoData = reader.ReadBytes(0x80);
-            if(_layerVersion == 0)
+            if (_layerVersion == 0)
             {
                 rhoArchiveInfoData = RhoEncrypt.DecryptData(_rhoKey, rhoArchiveInfoData);
             }
-            else if( _layerVersion == 1) 
+            else if (_layerVersion == 1)
             {
                 rhoArchiveInfoData = RhoEncrypt.DecryptHeaderInfo(rhoArchiveInfoData, _rhoKey);
             }
@@ -126,9 +136,9 @@ namespace KartLibrary.File
             // Decode rho archive info
             using (MemoryStream memStream = new MemoryStream(rhoArchiveInfoData))
             {
-                BinaryReader memReader = new BinaryReader(memStream);   
+                BinaryReader memReader = new BinaryReader(memStream);
                 uint infoDataChksum = memReader.ReadUInt32();
-                uint verifyChkSum = Adler.Adler32(0, rhoArchiveInfoData, 4, 0x7C); 
+                uint verifyChkSum = Adler.Adler32(0, rhoArchiveInfoData, 4, 0x7C);
                 if (infoDataChksum != verifyChkSum)
                     throw new Exception("rho file modified.");
                 int versionChkCode = memReader.ReadInt32();
@@ -145,6 +155,7 @@ namespace KartLibrary.File
                     int u2 = memReader.ReadInt32();
                     _dataChecksum = memReader.ReadUInt32();
                 }
+
                 uint endMagicCode = memReader.ReadUInt32();
                 int u4 = memReader.ReadInt32();
                 if (endMagicCode != 0xfc1f9778u)
@@ -156,12 +167,12 @@ namespace KartLibrary.File
             _fileHandlers.EnsureCapacity(dataInfoCount);
             for (int i = 0; i < dataInfoCount; i++)
             {
-                if(_layerVersion == 0)
+                if (_layerVersion == 0)
                 {
                     RhoDataInfo dataInfo = reader.ReadBlockInfo10(dataInfoKey10);
                     _dataInfoMap.Add(dataInfo.Index, dataInfo);
                 }
-                else if(_layerVersion == 1)
+                else if (_layerVersion == 1)
                 {
                     RhoDataInfo dataInfo = reader.ReadBlockInfo(dataInfoKey11);
                     _dataInfoMap.Add(dataInfo.Index, dataInfo);
@@ -172,18 +183,19 @@ namespace KartLibrary.File
             // Read all folders and all files info.
             uint folderKey = RhoKey.GetDirectoryDataKey(_rhoKey);
 
-            Queue<(uint folderDataIndex, RhoFolder folder)> procssQueue = new Queue<(uint folderDataIndex, RhoFolder folder)>();
+            Queue<(uint folderDataIndex, RhoFolder folder)> procssQueue =
+                new Queue<(uint folderDataIndex, RhoFolder folder)>();
             procssQueue.Enqueue((0xFFFFFFFF, _rootFolder));
 
-            while(procssQueue.Count > 0)
+            while (procssQueue.Count > 0)
             {
                 var queObj = procssQueue.Dequeue();
                 byte[] folderData = getData(queObj.folderDataIndex, folderKey);
-                using(MemoryStream memStream = new MemoryStream(folderData))
+                using (MemoryStream memStream = new MemoryStream(folderData))
                 {
                     BinaryReader memReader = new BinaryReader(memStream);
                     int folderCount = memReader.ReadInt32();
-                    for(int i = 0; i < folderCount; i++)
+                    for (int i = 0; i < folderCount; i++)
                     {
                         RhoFolder subFolder = new RhoFolder();
                         string name = memReader.ReadNullTerminatedText(true);
@@ -192,8 +204,9 @@ namespace KartLibrary.File
                         procssQueue.Enqueue((folderDataIndex, subFolder));
                         queObj.folder.AddFolder(subFolder);
                     }
+
                     int fileCount = memReader.ReadInt32();
-                    for(int i = 0; i < fileCount; i++)
+                    for (int i = 0; i < fileCount; i++)
                     {
                         RhoFile subFile = new RhoFile();
                         string fileName = memReader.ReadNullTerminatedText(true);
@@ -204,7 +217,8 @@ namespace KartLibrary.File
                         uint fileKey = RhoKey.GetFileKey(_rhoKey, fileName, extInt);
                         string fileExtension = Encoding.ASCII.GetString(BitConverter.GetBytes(extInt)).TrimEnd('\0');
 
-                        RhoFileHandler fileHandler = new RhoFileHandler(this, (RhoFileProperty)fileProperty, dataIndex, fileSize, fileKey);
+                        RhoFileHandler fileHandler = new RhoFileHandler(this, (RhoFileProperty)fileProperty, dataIndex,
+                            fileSize, fileKey);
                         RhoDataSource bufferedDataSource = new RhoDataSource(fileHandler);
                         subFile.DataSource = bufferedDataSource;
                         subFile.Name = $"{fileName}.{fileExtension}";
@@ -215,15 +229,17 @@ namespace KartLibrary.File
                     }
                 }
             }
-            
+
             _closed = false;
         }
 
         public void Save()
         {
             if (_closed)
-                throw new InvalidOperationException("Save operation only available if this RhoArchive instance is open from Rho file.");
+                throw new InvalidOperationException(
+                    "Save operation only available if this RhoArchive instance is open from Rho file.");
         }
+
         /// <summary>
         /// Save current <see cref="RhoArchive"/> instance to Rho file.
         /// </summary>
@@ -234,16 +250,18 @@ namespace KartLibrary.File
             const uint dataInfoWhiteningKey = 0x3a9213ac;
             string fullName = Path.GetFullPath(filePath);
             string fullDirName = Path.GetDirectoryName(fullName) ?? "";
-            if(!Directory.Exists(fullDirName))
+            if (!Directory.Exists(fullDirName))
             {
                 throw new Exception("directory not exists.");
             }
-            if(_rhoStream is not null)
+
+            if (_rhoStream is not null)
             {
                 string curRhoFullName = Path.GetFullPath(_rhoStream.Name);
                 if (curRhoFullName == fullDirName)
                     System.IO.File.Copy(curRhoFullName, $"{curRhoFullName}.bak");
             }
+
             string outFileName = Path.GetFileNameWithoutExtension(fullName);
             uint outRhoKey = RhoKey.GetRhoKey(outFileName);
 
@@ -256,14 +274,15 @@ namespace KartLibrary.File
                 _rhoStream.Close();
                 releaseAllHandlers();
             }
+
             uint outDataHash = 0;
             foreach (DataSavingInfo dataSavingInfo in dataSavingQueue)
                 outDataHash = Adler.Adler32Combine(outDataHash, dataSavingInfo.Data, 0, dataSavingInfo.Data.Length);
-            if(_dataInfoMap is not null)
+            if (_dataInfoMap is not null)
                 _dataInfoMap.Clear();
             else
                 _dataInfoMap = new Dictionary<uint, RhoDataInfo>(dataSavingQueue.Count);
-            if(_fileHandlers is null)
+            if (_fileHandlers is null)
                 _fileHandlers = new Dictionary<uint, RhoFileHandler>(dataSavingQueue.Count);
             // Begin write to out file.
             FileStream outFileStream = new FileStream(fullName, FileMode.Create);
@@ -276,22 +295,22 @@ namespace KartLibrary.File
             outWriter.Write(Encoding.Unicode.GetBytes(_rhLayerIdentifiers[_layerVersion]));
             outFileStream.Seek(0x40, SeekOrigin.Begin);
             outWriter.Write(Encoding.Unicode.GetBytes(_rhLayerSecondText));
-            
+
             // Write Header
             outFileStream.Seek(0x80, SeekOrigin.Begin);
             byte[] rhoHeaderData = new byte[0x80]; //Without header checksum
             byte[] dataInfoKey10 = new byte[0x20];
-            using(MemoryStream memStream = new MemoryStream(0x7C))
+            using (MemoryStream memStream = new MemoryStream(0x7C))
             {
                 BinaryWriter memWriter = new BinaryWriter(memStream);
                 memWriter.Write(_layerVersion | 0x10000);
                 memWriter.Write(dataSavingQueue.Count);
                 memWriter.Write(dataInfoWhiteningKey);
-                if(_layerVersion == 0)
+                if (_layerVersion == 0)
                 {
                     memWriter.Write(dataInfoKey10);
                 }
-                else if(_layerVersion == 1)
+                else if (_layerVersion == 1)
                 {
                     memWriter.Write((int)1);
                     memWriter.Write(outRhoKey - 0x397E40C3);
@@ -299,9 +318,11 @@ namespace KartLibrary.File
                     memWriter.Write(0xFC1F9778);
                     memWriter.Write((int)0x7E);
                 }
+
                 memStream.Seek(0, SeekOrigin.Begin);
                 memStream.Read(rhoHeaderData, 4, (int)memStream.Length);
             }
+
             uint rhoHeaderChksum = Adler.Adler32(0, rhoHeaderData, 4, 0x7C);
             Array.Copy(BitConverter.GetBytes(rhoHeaderChksum), 0, rhoHeaderData, 0, 0x04);
             if (_layerVersion == 0)
@@ -317,7 +338,7 @@ namespace KartLibrary.File
             foreach (DataSavingInfo dataSavingInfo in dataSavingQueue)
             {
                 byte[] dataInfoEncData = new byte[0x20];
-                using(MemoryStream memStream = new MemoryStream(0x20))
+                using (MemoryStream memStream = new MemoryStream(0x20))
                 {
                     BinaryWriter memWriter = new BinaryWriter(memStream);
                     memWriter.Write(dataSavingInfo.DataInfo.Index);
@@ -326,10 +347,11 @@ namespace KartLibrary.File
                     memWriter.Write(dataSavingInfo.DataInfo.UncompressedSize);
                     memWriter.Write((int)dataSavingInfo.DataInfo.BlockProperty);
                     memWriter.Write(dataSavingInfo.DataInfo.Checksum);
-                    
+
                     memStream.Seek(0, SeekOrigin.Begin);
                     memStream.Read(dataInfoEncData, 0, dataInfoEncData.Length);
                 }
+
                 RhoDataInfo rhoDataInfo = new RhoDataInfo();
                 rhoDataInfo.Index = dataSavingInfo.DataInfo.Index;
                 rhoDataInfo.Offset = dataSavingInfo.DataInfo.Offset + dataBeginOffset;
@@ -348,37 +370,41 @@ namespace KartLibrary.File
             }
 
             // Write Data
-            while(dataSavingQueue.Count > 0)
+            while (dataSavingQueue.Count > 0)
             {
                 DataSavingInfo dataSavingInfo = dataSavingQueue.Dequeue();
                 outFileStream.Seek(dataSavingInfo.DataInfo.Offset + dataBeginOffset, SeekOrigin.Begin);
                 outFileStream.Write(dataSavingInfo.Data, 0, dataSavingInfo.Data.Length);
-                if(dataSavingInfo.File is not null)
+                if (dataSavingInfo.File is not null)
                 {
                     RhoFile file = dataSavingInfo.File;
-                    RhoFileHandler fileHandler = new RhoFileHandler(this, file.FileEncryptionProperty, dataSavingInfo.DataInfo.Index, file.Size, RhoKey.GetFileKey(outRhoKey, file.NameWithoutExt, file.getExtNum()));
-                    if(file.DataSource is not null)
+                    RhoFileHandler fileHandler = new RhoFileHandler(this, file.FileEncryptionProperty,
+                        dataSavingInfo.DataInfo.Index, file.Size,
+                        RhoKey.GetFileKey(outRhoKey, file.NameWithoutExt, file.getExtNum()));
+                    if (file.DataSource is not null)
                         file.DataSource.Dispose();
                     _fileHandlers.Add(dataSavingInfo.DataInfo.Index, fileHandler);
                     file.DataSource = new RhoDataSource(fileHandler);
                 }
             }
-            if(outFileStream.Position != dataEndOffset)
+
+            if (outFileStream.Position != dataEndOffset)
             {
                 outFileStream.Seek(dataEndOffset - 1, SeekOrigin.Begin);
                 outFileStream.WriteByte(0x00);
             }
+
             outFileStream.Close();
             _rhoStream = new FileStream(fullName, FileMode.Open);
 
             // send applied changes event to RhoFolder instances
             Queue<RhoFolder> folderQueue = new Queue<RhoFolder>();
             folderQueue.Enqueue(RootFolder);
-            while(folderQueue.Count > 0)
+            while (folderQueue.Count > 0)
             {
                 RhoFolder folder = folderQueue.Dequeue();
                 folder.appliedChanges();
-                foreach(RhoFolder subFolder in folder.Folders)
+                foreach (RhoFolder subFolder in folder.Folders)
                     folderQueue.Enqueue(subFolder);
             }
         }
@@ -387,7 +413,7 @@ namespace KartLibrary.File
         {
             if (_closed)
                 throw new Exception("This archive is close or is not open from a file.");
-            if(_rhoStream is not null && _rhoStream.CanRead)
+            if (_rhoStream is not null && _rhoStream.CanRead)
                 _rhoStream.Close();
             _rhoStream?.Dispose();
             _fileHandlers.Clear();
@@ -423,41 +449,46 @@ namespace KartLibrary.File
             clonedRhoStream.Seek(dataInfo.Offset, SeekOrigin.Begin);
             byte[] outData = new byte[dataInfo.DataSize];
             clonedRhoStream.Read(outData, 0, dataInfo.DataSize);
-            
+
             if ((dataInfo.BlockProperty & RhoBlockProperty.Compressed) != RhoBlockProperty.None)
             {
-                using(MemoryStream memStream = new MemoryStream(outData))
+                using (MemoryStream memStream = new MemoryStream(outData))
                 {
                     outData = new byte[dataInfo.UncompressedSize];
-                    Ionic.Zlib.ZlibStream decompressStream = new Ionic.Zlib.ZlibStream(memStream, Ionic.Zlib.CompressionMode.Decompress);
+                    Ionic.Zlib.ZlibStream decompressStream =
+                        new Ionic.Zlib.ZlibStream(memStream, Ionic.Zlib.CompressionMode.Decompress);
                     int readed = decompressStream.Read(outData, 0, outData.Length);
                 }
             }
-            if((dataInfo.BlockProperty & RhoBlockProperty.PartialEncrypted) != RhoBlockProperty.None)
+
+            if ((dataInfo.BlockProperty & RhoBlockProperty.PartialEncrypted) != RhoBlockProperty.None)
             {
                 RhoEncrypt.DecryptData(key, outData, 0, outData.Length);
             }
-            if(dataInfo.BlockProperty == RhoBlockProperty.PartialEncrypted)
+
+            if (dataInfo.BlockProperty == RhoBlockProperty.PartialEncrypted)
             {
                 RhoDataInfo? secDatainfo = _dataInfoMap.ContainsKey(dataIndex + 1) ? _dataInfoMap[dataIndex + 1] : null;
-                if(secDatainfo is not null)
+                if (secDatainfo is not null)
                 {
                     Array.Resize(ref outData, outData.Length + secDatainfo.DataSize);
                     clonedRhoStream.Read(outData, dataInfo.DataSize, secDatainfo.DataSize);
                 }
             }
+
             return outData;
         }
 
-        private void storeFolderAndFiles(RhoFolder folder, Queue<DataSavingInfo> savingInfo, HashSet<uint> usedIndex, ref int dataOffset, uint outRhoKey)
+        private void storeFolderAndFiles(RhoFolder folder, Queue<DataSavingInfo> savingInfo, HashSet<uint> usedIndex,
+            ref int dataOffset, uint outRhoKey)
         {
             if (folder.Name == "" && folder.Parent is not null)
                 throw new Exception("folder name couldn't be empty.");
             uint folderDataIndex = folder.getFolderDataIndex();
-            while(usedIndex.Contains(folderDataIndex))
+            while (usedIndex.Contains(folderDataIndex))
                 folderDataIndex += 0x5F03E367;
             byte[] folderData;
-            
+
             Queue<DataSavingInfo> fileSavingInfoQueue = new Queue<DataSavingInfo>();
 
             // Encode folder
@@ -467,18 +498,19 @@ namespace KartLibrary.File
                 IReadOnlyCollection<RhoFolder> subFolders = folder.Folders;
                 IReadOnlyCollection<RhoFile> subFiles = folder.Files;
                 memWriter.Write(subFolders.Count);
-                foreach(RhoFolder subFolder in subFolders)
+                foreach (RhoFolder subFolder in subFolders)
                 {
                     uint subFolderDataIndex = subFolder.getFolderDataIndex();
                     memWriter.WriteNullTerminatedText(subFolder.Name, true);
                     memWriter.Write(subFolderDataIndex);
                 }
+
                 memWriter.Write(subFiles.Count);
                 foreach (RhoFile subFile in subFiles)
                 {
                     if (subFile.DataSource is null)
                         throw new Exception("data source is null.");
-                    
+
                     uint extNum = subFile.getExtNum();
                     uint fileKey = RhoKey.GetFileKey(outRhoKey, subFile.NameWithoutExt, extNum);
                     int fileSize = subFile.Size;
@@ -488,8 +520,9 @@ namespace KartLibrary.File
 
                     while (((usedIndex.Contains(fileDataIndex) || usedIndex.Contains(fileDataIndex + 1))))
                         fileDataIndex += 0x4D21CB4F;
-                    
-                    if (subFile.FileEncryptionProperty == RhoFileProperty.Encrypted || subFile.FileEncryptionProperty == RhoFileProperty.CompressedEncrypted)
+
+                    if (subFile.FileEncryptionProperty == RhoFileProperty.Encrypted ||
+                        subFile.FileEncryptionProperty == RhoFileProperty.CompressedEncrypted)
                     {
                         fileChksum = Adler.Adler32(0, fileData, 0, fileData.Length);
                         RhoEncrypt.EncryptData(fileKey, fileData, 0, fileData.Length);
@@ -498,11 +531,14 @@ namespace KartLibrary.File
                     {
                         RhoEncrypt.EncryptData(fileKey, fileData, 0, Math.Min(0x100, fileData.Length));
                     }
-                    if (subFile.FileEncryptionProperty == RhoFileProperty.CompressedEncrypted || subFile.FileEncryptionProperty == RhoFileProperty.Compressed)
+
+                    if (subFile.FileEncryptionProperty == RhoFileProperty.CompressedEncrypted ||
+                        subFile.FileEncryptionProperty == RhoFileProperty.Compressed)
                     {
                         using (MemoryStream ms = new MemoryStream())
                         {
-                            Ionic.Zlib.ZlibStream compressStream = new Ionic.Zlib.ZlibStream(ms, Ionic.Zlib.CompressionMode.Compress, Ionic.Zlib.CompressionLevel.BestCompression ,true);
+                            Ionic.Zlib.ZlibStream compressStream = new Ionic.Zlib.ZlibStream(ms,
+                                Ionic.Zlib.CompressionMode.Compress, Ionic.Zlib.CompressionLevel.BestCompression, true);
                             compressStream.Write(fileData, 0, fileData.Length);
                             compressStream.Flush();
                             compressStream.Close();
@@ -510,7 +546,7 @@ namespace KartLibrary.File
                         }
                     }
 
-                    memWriter.WriteNullTerminatedText(subFile.NameWithoutExt, true); 
+                    memWriter.WriteNullTerminatedText(subFile.NameWithoutExt, true);
                     memWriter.Write(extNum);
                     memWriter.Write((int)subFile.FileEncryptionProperty);
                     memWriter.Write(fileDataIndex);
@@ -518,7 +554,7 @@ namespace KartLibrary.File
 
                     DataSavingInfo fileSavingInfo = new DataSavingInfo();
                     fileSavingInfo.File = subFile;
-                    if(subFile.FileEncryptionProperty == RhoFileProperty.PartialEncrypted)
+                    if (subFile.FileEncryptionProperty == RhoFileProperty.PartialEncrypted)
                     {
                         fileSavingInfo.Data = new byte[Math.Min(0x100, fileData.Length)];
                         fileSavingInfo.DataInfo.Index = fileDataIndex;
@@ -565,11 +601,12 @@ namespace KartLibrary.File
                                 fileSavingInfo.DataInfo.BlockProperty = RhoBlockProperty.CompressedEncrypted;
                                 break;
                         }
+
                         usedIndex.Add(fileDataIndex);
                         fileSavingInfoQueue.Enqueue(fileSavingInfo);
                     }
-
                 }
+
                 folderData = memStream.ToArray();
             }
 
@@ -590,7 +627,7 @@ namespace KartLibrary.File
             dataOffset = (dataOffset + folderSavingInfo.DataInfo.DataSize + 0xFF) & 0x7FFFFF00;
             foreach (RhoFolder subFolder in folder.Folders)
                 storeFolderAndFiles(subFolder, savingInfo, usedIndex, ref dataOffset, outRhoKey);
-            while(fileSavingInfoQueue.Count > 0)
+            while (fileSavingInfoQueue.Count > 0)
             {
                 DataSavingInfo fileSavingInfo = fileSavingInfoQueue.Dequeue();
                 fileSavingInfo.DataInfo.Offset = dataOffset;
@@ -598,23 +635,26 @@ namespace KartLibrary.File
                 dataOffset = (dataOffset + fileSavingInfo.DataInfo.DataSize + 0xFF) & 0x7FFFFF00;
             }
         }
-        
+
         private void releaseAllHandlers()
         {
-            foreach(RhoFileHandler handler in _fileHandlers.Values)
+            foreach (RhoFileHandler handler in _fileHandlers.Values)
                 handler.releaseHandler();
             _fileHandlers.Clear();
         }
+
         #endregion
 
         #region Structs
+
         private class DataSavingInfo
         {
             public RhoDataInfo DataInfo = new RhoDataInfo();
-            public RhoFile? File; 
+            public RhoFile? File;
             public IDataSource DataSource;
             public byte[] Data;
         }
+
         #endregion
     }
 
@@ -622,12 +662,15 @@ namespace KartLibrary.File
     public partial class RhoArchive
     {
         #region Constants
+
         internal readonly string[] _rhLayerIdentifiers = new string[]
         {
             "Rh layer spec 1.0",
             "Rh layer spec 1.1"
         };
+
         internal const string _rhLayerSecondText = "KartRider (veblush & dew)"; //Kartrider Rh layer author.
+
         #endregion
     }
 }

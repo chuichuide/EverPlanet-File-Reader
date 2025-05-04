@@ -22,7 +22,6 @@ namespace KartLibrary.File
         {
             this.BaseRho = BaseRho;
             DirectoryName = "";
-
         }
 
         internal void GetFromDirInfo(byte[] DirInfoData)
@@ -30,9 +29,10 @@ namespace KartLibrary.File
             using (MemoryStream ms = new MemoryStream(DirInfoData))
             {
                 BinaryReader msReader = new BinaryReader(ms);
-                int DirCount = msReader.ReadInt32();
-                Directories = new Dictionary<string, RhoDirectory>(DirCount);
-                for (int i = 0; i < DirCount; i++)
+                
+                int dirCount = msReader.ReadInt32();
+                Directories = new Dictionary<string, RhoDirectory>(dirCount);
+                for (int i = 0; i < dirCount; i++)
                 {
                     RhoDirectory dir = new RhoDirectory(BaseRho);
                     StringBuilder strBuilder = new StringBuilder();
@@ -47,9 +47,10 @@ namespace KartLibrary.File
                     dir.DirIndex = dirInd;
                     Directories.Add(dir.DirectoryName, dir);
                 }
-                int FileCount = msReader.ReadInt32();
-                Files = new Dictionary<string, RhoFileInfo>(FileCount);
-                for (int i = 0; i < FileCount; i++)
+                
+                int fileCount = msReader.ReadInt32();
+                Files = new Dictionary<string, RhoFileInfo>(fileCount);
+                for (int i = 0; i < fileCount; i++)
                 {
                     RhoFileInfo rfi = new RhoFileInfo(BaseRho);
                     StringBuilder strBuilder = new StringBuilder();
@@ -61,6 +62,7 @@ namespace KartLibrary.File
                     }
                     rfi.Name = strBuilder.ToString();
                     strBuilder.Clear();
+                    
                     uint extInt = msReader.ReadUInt32();
                     rfi.FileProperty = (RhoFileProperty)msReader.ReadInt32();
                     rfi.FileBlockIndex = msReader.ReadUInt32();
@@ -71,12 +73,17 @@ namespace KartLibrary.File
                         if (tempChar != '\0')
                             strBuilder.Append(tempChar);
                     }
-                    rfi.Extension = strBuilder.ToString();
+                    
+                    rfi.Extension = new string(strBuilder.ToString().Reverse().ToArray());//for EverPlanet
+                    // rfi.Extension = strBuilder.ToString();
+                    
                     Files.Add(rfi.FullFileName, rfi);
                     if (!counter.ContainsKey(rfi.FileProperty))
                         counter.Add(rfi.FileProperty, new Dictionary<string, int>());
+                    
                     if (!counter[rfi.FileProperty].ContainsKey(rfi.Extension))
                         counter[rfi.FileProperty].Add(rfi.Extension, 0);
+                    
                     counter[rfi.FileProperty][rfi.Extension]++;
                 }
             }

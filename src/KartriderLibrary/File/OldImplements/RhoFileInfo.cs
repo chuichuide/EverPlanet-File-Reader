@@ -44,7 +44,8 @@ namespace KartLibrary.File
         internal int getExtNum()
         {
             int output = 0;
-            byte[] arr = Encoding.UTF8.GetBytes(_ext);
+            byte[] arr = Encoding.UTF8.GetBytes(_ext).Reverse().ToArray();//for EverPlanet
+            // byte[] arr = Encoding.UTF8.GetBytes(_ext);
             for (int i = 0; i < arr.Length; i++)
             {
                 output |= arr[i] << (i << 3);

@@ -20,21 +20,27 @@ namespace KartLibrary.File
     public class Rho5Archive : IRhoArchive<Rho5Folder, Rho5File>
     {
         #region Members
+
         private Rho5Folder _rootFolder;
+
         // private FileStream? _rho5Stream;
         private Dictionary<int, FileStream> _rho5Streams;
         private Dictionary<string, Rho5FileHandler> _fileHandlers;
         private Dictionary<int, int> _dataBeginPoses;
         private bool _closed;
+
         #endregion
 
         #region Properties
+
         public Rho5Folder RootFolder => _rootFolder;
 
         public bool IsClosed => _closed;
+
         #endregion
 
         #region Constructors
+
         public Rho5Archive()
         {
             _rootFolder = new Rho5Folder();
@@ -42,9 +48,11 @@ namespace KartLibrary.File
             _rho5Streams = new Dictionary<int, FileStream>();
             _dataBeginPoses = new Dictionary<int, int>();
         }
+
         #endregion
 
         #region Methods
+
         public void Open(string dataPackPath, string dataPackName, CountryCode region)
         {
             if (!Directory.Exists(dataPackPath))
@@ -63,7 +71,8 @@ namespace KartLibrary.File
             }
         }
 
-        public void Save(string dataPackPath, string dataPackName, CountryCode region, SavePattern savePattern = SavePattern.Auto)
+        public void Save(string dataPackPath, string dataPackName, CountryCode region,
+            SavePattern savePattern = SavePattern.Auto)
         {
             int maxOpenedPartID = _rho5Streams.Count == 0 ? -1 : _rho5Streams.Select(x => x.Key).Max();
             string mixingStr = getMixingString(region);
@@ -77,42 +86,47 @@ namespace KartLibrary.File
                 oldFilesQueues.Add(i, new Queue<Rho5File>());
                 approxiPartSize.Add(i, 0);
             }
+
             Queue<Rho5Folder> folderQueue = new Queue<Rho5Folder>();
             folderQueue.Enqueue(_rootFolder);
-            while(folderQueue.Count > 0)
+            while (folderQueue.Count > 0)
             {
                 Rho5Folder curFolder = folderQueue.Dequeue();
-                foreach(Rho5Folder subFolder in curFolder.Folders)
+                foreach (Rho5Folder subFolder in curFolder.Folders)
                     folderQueue.Enqueue(subFolder);
-                foreach(Rho5File file in curFolder.Files)
+                foreach (Rho5File file in curFolder.Files)
                 {
-                    if(file.IsModified && file._dataPackID >= 0)
+                    if (file.IsModified && file._dataPackID >= 0)
                     {
                         isPartModified[file._dataPackID] = true;
                     }
-                    if(file._dataPackID < 0)
+
+                    if (file._dataPackID < 0)
                         newFilesQueue.Enqueue(file);
                     else
                         oldFilesQueues[file._dataPackID].Enqueue(file);
                 }
             }
 
-            for(int i = 0; i <= maxOpenedPartID; i++)
+            for (int i = 0; i <= maxOpenedPartID; i++)
             {
-                if(savePattern == SavePattern.AlwaysRegeneration || (savePattern == SavePattern.GenerateIfModified && isPartModified[i]))
+                if (savePattern == SavePattern.AlwaysRegeneration ||
+                    (savePattern == SavePattern.GenerateIfModified && isPartModified[i]))
                 {
                     string fullFilename = getDataPackFilePath(dataPackPath, dataPackName, i);
                     bool reopen = true;
-                    if(savePattern == SavePattern.GenerateIfModified)
+                    if (savePattern == SavePattern.GenerateIfModified)
                     {
-                        if(_rho5Streams.ContainsKey(i) && _rho5Streams[i].Name != fullFilename)
+                        if (_rho5Streams.ContainsKey(i) && _rho5Streams[i].Name != fullFilename)
                             reopen = false;
                     }
-                    saveSingleFileTo(dataPackPath, $"{dataPackName}", i, mixingStr, oldFilesQueues[i], int.MaxValue, reopen);
+
+                    saveSingleFileTo(dataPackPath, $"{dataPackName}", i, mixingStr, oldFilesQueues[i], int.MaxValue,
+                        reopen);
                 }
             }
 
-            for(int i = maxOpenedPartID + 1; newFilesQueue.Count > 0; i++)
+            for (int i = maxOpenedPartID + 1; newFilesQueue.Count > 0; i++)
             {
                 saveSingleFileTo(dataPackPath, $"{dataPackName}", i, mixingStr, newFilesQueue, 10485760, true);
             }
@@ -128,6 +142,7 @@ namespace KartLibrary.File
                     rho5Stream.Close();
                 rho5Stream.Dispose();
             }
+
             _rho5Streams.Clear();
             _rootFolder.Clear();
             releaseAllHandles();
@@ -142,6 +157,7 @@ namespace KartLibrary.File
                     rho5Stream.Close();
                 rho5Stream.Dispose();
             }
+
             _rho5Streams.Clear();
             releaseAllHandles();
         }
@@ -189,9 +205,11 @@ namespace KartLibrary.File
                 if (fileInfoChecksum != verifyChksum)
                     throw new Exception("fileInfo checksum mismatch.");
 
-                byte[] decryptKey = Rho5Key.GetPackedFileKey(fileChksum, Rho5Key.GetFileKey_U1(mixingStr), fileFullPath);
+                byte[] decryptKey =
+                    Rho5Key.GetPackedFileKey(fileChksum, Rho5Key.GetFileKey_U1(mixingStr), fileFullPath);
 
-                Rho5FileHandler fileHandler = new Rho5FileHandler(this, dataPackID, offset, decompressedSize, compressedSize, decryptKey, fileChksum);
+                Rho5FileHandler fileHandler = new Rho5FileHandler(this, dataPackID, offset, decompressedSize,
+                    compressedSize, decryptKey, fileChksum);
 
                 Rho5Folder curFolder = _rootFolder;
                 string[] splitedPath = fileFullPath.Split('/');
@@ -206,8 +224,10 @@ namespace KartLibrary.File
                         });
                         curFolder.appliedChanges();
                     }
+
                     curFolder = curFolder.GetFolder(curFolderName);
                 }
+
                 Rho5File rho5File = new Rho5File();
                 rho5File.DataSource = new Rho5DataSource(fileHandler);
                 rho5File.Name = splitedPath[^1];
@@ -218,15 +238,16 @@ namespace KartLibrary.File
 
                 _fileHandlers.Add(fileFullPath, fileHandler);
             }
+
             if (!_dataBeginPoses.ContainsKey(dataPackID))
                 _dataBeginPoses.Add(dataPackID, 0);
             _dataBeginPoses[dataPackID] = (int)decryptStream.Position + 0x3FF & 0x7FFFFC00;
 
             _rho5Streams.Add(dataPackID, rho5Stream);
-
         }
 
-        private void saveSingleFileTo(string dataPackPath, string dataPackName, int dataPackID, string mixingStr, Queue<Rho5File> allFileQueue, int maxSize, bool reopen)
+        private void saveSingleFileTo(string dataPackPath, string dataPackName, int dataPackID, string mixingStr,
+            Queue<Rho5File> allFileQueue, int maxSize, bool reopen)
         {
             string fullName = getDataPackFilePath(dataPackPath, dataPackName, dataPackID);
             string fullDirName = Path.GetDirectoryName(fullName) ?? "";
@@ -234,6 +255,7 @@ namespace KartLibrary.File
             {
                 throw new Exception("directory not exists.");
             }
+
             string outFileName = Path.GetFileName(fullName);
 
             MemoryStream tmpMemStream = new MemoryStream(Math.Min(maxSize, 21943040));
@@ -250,7 +272,7 @@ namespace KartLibrary.File
             int filesInfoDataLen = 0;
             int dataLenSum = 0;
             Queue<Rho5File> fileQueue = new Queue<Rho5File>();
-            while(allFileQueue.Count > 0 && dataLenSum <= maxSize)
+            while (allFileQueue.Count > 0 && dataLenSum <= maxSize)
             {
                 if (dataLenSum >= maxSize)
                     break;
@@ -261,9 +283,9 @@ namespace KartLibrary.File
                 dataLenSum += file.Size;
                 fileQueue.Enqueue(file);
             }
-            
+
             // Writes
-            
+
             int headerOffset = getHeaderOffset(outFileName);
             int filesInfoOffset = headerOffset + getFilesInfoOffset(outFileName);
 
@@ -293,10 +315,12 @@ namespace KartLibrary.File
                 byte[] data = file.GetBytes();
                 byte[] processedData;
                 byte[] fileChksum = MD5.HashData(data);
-                byte[] encryptKey = Rho5Key.GetPackedFileKey(fileChksum, Rho5Key.GetFileKey_U1(mixingStr), file.FullName);
+                byte[] encryptKey =
+                    Rho5Key.GetPackedFileKey(fileChksum, Rho5Key.GetFileKey_U1(mixingStr), file.FullName);
                 using (MemoryStream memStream = new MemoryStream())
                 {
-                    Ionic.Zlib.ZlibStream compressStream = new Ionic.Zlib.ZlibStream(memStream, Ionic.Zlib.CompressionMode.Compress, true);
+                    Ionic.Zlib.ZlibStream compressStream =
+                        new Ionic.Zlib.ZlibStream(memStream, Ionic.Zlib.CompressionMode.Compress, true);
                     compressStream.Write(data, 0, data.Length);
                     compressStream.Flush();
                     compressStream.Close();
@@ -307,6 +331,7 @@ namespace KartLibrary.File
                     encryptStream.Flush();
                     processedData = memStream.ToArray();
                 }
+
                 int fileInfoChksum = 7 + ((dataOffset - dataBeginOffset) >> 10) + data.Length + processedData.Length;
                 foreach (byte b in fileChksum)
                     fileInfoChksum += b;
@@ -325,7 +350,9 @@ namespace KartLibrary.File
 
                 if (reopen)
                 {
-                    Rho5FileHandler fileHandler = new Rho5FileHandler(this, dataPackID, (dataOffset - dataBeginOffset) >> 10, data.Length, processedData.Length, encryptKey, fileChksum);
+                    Rho5FileHandler fileHandler = new Rho5FileHandler(this, dataPackID,
+                        (dataOffset - dataBeginOffset) >> 10, data.Length, processedData.Length, encryptKey,
+                        fileChksum);
                     Rho5DataSource rho5DataSource = new Rho5DataSource(fileHandler);
                     file.DataSource = rho5DataSource;
                     if (_fileHandlers.ContainsKey(file.FullName))
@@ -333,8 +360,10 @@ namespace KartLibrary.File
                         _fileHandlers[file.FullName].releaseHandler();
                         _fileHandlers.Remove(file.FullName);
                     }
+
                     _fileHandlers.Add(file.FullName, fileHandler);
                 }
+
                 dataOffset = dataOffset + processedData.Length + 0x3FF & 0x7FFFFC00;
                 outEncryptStream.SetLength(dataOffset);
             }
@@ -354,13 +383,14 @@ namespace KartLibrary.File
                     _rho5Streams[dataPackID].Dispose();
                     _rho5Streams.Remove(dataPackID);
                 }
-                if(_dataBeginPoses.ContainsKey(dataPackID))
+
+                if (_dataBeginPoses.ContainsKey(dataPackID))
                 {
                     _dataBeginPoses.Remove(dataPackID);
                 }
             }
 
-            using(FileStream outFileStream = new FileStream(fullName, FileMode.Create))
+            using (FileStream outFileStream = new FileStream(fullName, FileMode.Create))
             {
                 tmpMemStream.WriteTo(outFileStream);
             }
@@ -431,14 +461,17 @@ namespace KartLibrary.File
                 fileHandler.releaseHandler();
             _fileHandlers.Clear();
         }
-        
+
         internal byte[] getData(Rho5FileHandler handler)
         {
             if (!_rho5Streams.ContainsKey(handler._dataPackID) || !_dataBeginPoses.ContainsKey(handler._dataPackID))
                 throw new Exception("Invalid data pack id in file handler.");
+            
             FileStream rho5Stream = _rho5Streams[handler._dataPackID];
+            
             if (rho5Stream is null || !rho5Stream.CanRead)
                 throw new Exception("");
+            
             FileStream clonedStream = new FileStream(rho5Stream.SafeFileHandle, FileAccess.Read);
             Rho5DecryptStream decryptStream = new Rho5DecryptStream(clonedStream, handler._key);
             int offset = _dataBeginPoses[handler._dataPackID] + (handler._offset << 10);
@@ -446,24 +479,30 @@ namespace KartLibrary.File
             byte[] compressedData = new byte[handler._compressedSize];
             byte[] decompressedData = new byte[handler._decompressedSize];
             decryptStream.Read(compressedData, 0, compressedData.Length >= 0x400 ? 0x400 : compressedData.Length);
+            
             if (compressedData.Length >= 0x400)
                 clonedStream.Read(compressedData, 0x400, compressedData.Length - 0x400);
+            
             using (MemoryStream memStream = new MemoryStream(compressedData))
             {
                 decryptStream = new Rho5DecryptStream(memStream, handler._key);
                 Ionic.Zlib.ZlibStream decompressStream = new Ionic.Zlib.ZlibStream(decryptStream, Ionic.Zlib.CompressionMode.Decompress);
                 decompressStream.Read(decompressedData, 0, decompressedData.Length);
             }
+
             return decompressedData;
         }
+
         #endregion
 
         #region Structs
+
         private class DataSavingInfo
         {
             public Rho5File? File;
             public byte[] Data;
         }
+
         #endregion
     }
 }

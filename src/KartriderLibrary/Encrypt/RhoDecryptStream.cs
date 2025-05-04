@@ -23,15 +23,15 @@ namespace KartLibrary.Encrypt
 
         private long _basePosition = 0;
 
-        public long BasePosition 
-        { 
-            get => _basePosition; 
-            
+        public long BasePosition
+        {
+            get => _basePosition;
+
             set
             {
                 if (SeekMode == DecryptStreamSeekMode.KeepBasePosition)
                     _basePosition = value;
-            } 
+            }
         }
 
         private long _position = 0;
@@ -40,7 +40,7 @@ namespace KartLibrary.Encrypt
         {
             get => _position + bufferRead;
             set
-            { 
+            {
                 BaseStream.Position = _position = value;
                 bufferLength = bufferLength = 64;
             }
@@ -72,20 +72,20 @@ namespace KartLibrary.Encrypt
         {
             int readLen = Math.Min(count, (int)(this.Length - this.Position));
             if (readLen >= writeArr.Length)
-                    throw new IndexOutOfRangeException();
+                throw new IndexOutOfRangeException();
             fixed (byte* writePtr = &writeArr[offset], bufPtr = buffer)
             {
                 if (readLen < 0)
                     throw new EndOfStreamException();
                 if (Sse2.IsSupported)
                 {
-                    int writePos = 0, reqCpy=readLen;
+                    int writePos = 0, reqCpy = readLen;
                     while (reqCpy > 0)
                     {
                         if (bufferRead >= bufferLength)
                             updateBuffer();
-                        int cpyLen = Math.Min(Math.Min(bufferLength - bufferRead, reqCpy),16);
-                        if(reqCpy < 16)
+                        int cpyLen = Math.Min(Math.Min(bufferLength - bufferRead, reqCpy), 16);
+                        if (reqCpy < 16)
                         {
                             for (int i = 0; i < cpyLen; i++)
                                 writePtr[writePos + i] = buffer[bufferRead + i];
@@ -97,7 +97,7 @@ namespace KartLibrary.Encrypt
                             int bIndex = bufferRead & ~(0xF);
                             int nIndex = bufferRead & 0xF;
                             Vector128<byte> bufVec = Sse2.LoadVector128(bufPtr + bIndex);
-                            if(nIndex != 0)
+                            if (nIndex != 0)
                                 bufVec = Sse2.ShiftRightLogical128BitLane(bufVec, (byte)nIndex);
                             Sse2.Store(writePtr + writePos, bufVec);
                             writePos += cpyLen;
@@ -108,7 +108,7 @@ namespace KartLibrary.Encrypt
                 }
                 else
                 {
-                    for(int i = 0; i < readLen; i++)
+                    for (int i = 0; i < readLen; i++)
                     {
                         if (bufferRead >= bufferLength)
                             updateBuffer();
@@ -116,12 +116,13 @@ namespace KartLibrary.Encrypt
                     }
                 }
             }
+
             return readLen;
         }
 
         public override long Seek(long offset, SeekOrigin origin)
         {
-            if(SeekMode == DecryptStreamSeekMode.KeepBasePosition)
+            if (SeekMode == DecryptStreamSeekMode.KeepBasePosition)
             {
                 long newOffset = 0, bufferPosition = 0;
                 switch (origin)
@@ -136,6 +137,7 @@ namespace KartLibrary.Encrypt
                         newOffset = this.Length + offset;
                         break;
                 }
+
                 if (newOffset < BasePosition)
                     throw new ArgumentOutOfRangeException("New offset is smaller than base position.");
                 bufferPosition = offset - ((offset - BasePosition) & 63);
@@ -143,11 +145,12 @@ namespace KartLibrary.Encrypt
                 updateBuffer();
                 bufferRead = (int)(bufferPosition - offset);
             }
-            else if(SeekMode == DecryptStreamSeekMode.ResetBasePosition)
+            else if (SeekMode == DecryptStreamSeekMode.ResetBasePosition)
             {
                 BaseStream.Seek(offset, origin);
                 updateBuffer();
             }
+
             return Position;
         }
 
@@ -186,12 +189,12 @@ namespace KartLibrary.Encrypt
             }
             else if (Sse2.IsSupported)
             {
-                fixed(byte *keyPtr = extendedKey, bufPtr = buffer)
+                fixed (byte* keyPtr = extendedKey, bufPtr = buffer)
                 {
-                    for(int i = 0; i < 4; i++)
+                    for (int i = 0; i < 4; i++)
                     {
                         Vector128<byte> keyVec = Sse2.LoadVector128(keyPtr + (i << 4));
-                        Vector128<byte> bufVec = Sse2.LoadVector128(bufPtr + (i<<4));
+                        Vector128<byte> bufVec = Sse2.LoadVector128(bufPtr + (i << 4));
                         bufVec = Sse2.Xor(bufVec, keyVec);
                         Sse2.Store(bufPtr + (i << 4), bufVec);
                     }
@@ -204,6 +207,7 @@ namespace KartLibrary.Encrypt
                     buffer[i] ^= extendedKey[i];
                 }
             }
+
             bufferRead = 0;
         }
     }

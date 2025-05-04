@@ -13,7 +13,6 @@ using System.Runtime.InteropServices;
 using System.Drawing.Imaging;
 using System.Diagnostics;
 using RhoLoader.Setting;
-
 using KartLibrary.File;
 
 namespace RhoLoader
@@ -56,6 +55,7 @@ namespace RhoLoader
                     default:
                         throw new Exception("");
                 }
+
                 stream.Dispose();
                 stream = new MemoryStream();
                 Bitmap bmp = new Bitmap(image.Width, image.Height, image.Stride, pf, d);
@@ -100,7 +100,7 @@ namespace RhoLoader
 
         private bool _terminated = false;
         private bool _bg_worker_finished = false;
-        
+
 
         public ExtractFolder(PackFolderInfo extract_folder, string extract_to_path, ExtractOptionToken extract_option)
         {
@@ -113,11 +113,12 @@ namespace RhoLoader
         private void BeginExtract()
         {
             //relative_path means the relative path of folder.
-            Queue<(string relative_path, PackFolderInfo folder)> extend_queue = new Queue<(string relative_path, PackFolderInfo folder)>();
+            Queue<(string relative_path, PackFolderInfo folder)> extend_queue =
+                new Queue<(string relative_path, PackFolderInfo folder)>();
             Queue<ExtractInfo> file_queue = new Queue<ExtractInfo>();
-            extend_queue.Enqueue(( "",_extract_folder));
+            extend_queue.Enqueue(("", _extract_folder));
             ReportProgress("( Preprocessing extract files )", 0);
-            while (extend_queue.Count > 0) 
+            while (extend_queue.Count > 0)
             {
                 if (_terminated)
                 {
@@ -125,30 +126,35 @@ namespace RhoLoader
                     TerminateExtract();
                     return;
                 }
+
                 (string relative_path, PackFolderInfo folder) cur_proc_obj = extend_queue.Dequeue();
                 string out_path = $"{_extract_path}{cur_proc_obj.relative_path}";
                 foreach (PackFolderInfo sub_folder in cur_proc_obj.folder.GetFoldersInfo())
                 {
                     extend_queue.Enqueue(($"{cur_proc_obj.relative_path}\\{sub_folder.FolderName}", sub_folder));
                 }
-                foreach(PackFileInfo sub_file in cur_proc_obj.folder.GetFilesInfo())
+
+                foreach (PackFileInfo sub_file in cur_proc_obj.folder.GetFilesInfo())
                 {
                     ExtractInfo extractInfo = new ExtractInfo
                     {
                         RelativePath = cur_proc_obj.relative_path,
                         FileInfo = sub_file
                     };
-                    if((_extract_option & ExtractOptionToken.ConvertDDS) != ExtractOptionToken.None && sub_file.FileName.EndsWith(".dds"))
+                    if ((_extract_option & ExtractOptionToken.ConvertDDS) != ExtractOptionToken.None &&
+                        sub_file.FileName.EndsWith(".dds"))
                     {
                         extractInfo.ConvertProcessor = ExtractConverter.DDSConverter;
                         extractInfo.Out_filename = $"{sub_file.FileName[0..^4]}.png";
                     }
-                    else if ((_extract_option & ExtractOptionToken.ConvertBML) != ExtractOptionToken.None && sub_file.FileName.EndsWith(".bml"))
+                    else if ((_extract_option & ExtractOptionToken.ConvertBML) != ExtractOptionToken.None &&
+                             sub_file.FileName.EndsWith(".bml"))
                     {
                         extractInfo.ConvertProcessor = ExtractConverter.BMLConverter;
                         extractInfo.Out_filename = $"{sub_file.FileName[0..^4]}.xml";
                     }
-                    else if ((_extract_option & ExtractOptionToken.ConvertKSV) != ExtractOptionToken.None && sub_file.FileName.EndsWith(".ksv"))
+                    else if ((_extract_option & ExtractOptionToken.ConvertKSV) != ExtractOptionToken.None &&
+                             sub_file.FileName.EndsWith(".ksv"))
                     {
                         extractInfo.ConvertProcessor = ExtractConverter.KSVConverter;
                         extractInfo.Out_filename = $"{sub_file.FileName[0..^4]}.json";
@@ -157,16 +163,15 @@ namespace RhoLoader
                     {
                         extractInfo.Out_filename = $"{sub_file.FileName}";
                     }
+
                     file_queue.Enqueue(extractInfo);
                 }
             }
+
             _totalFiles = file_queue.Count;
             if (this.InvokeRequired)
-                this.Invoke(() =>
-                {
-                    this.progress_main.MaxValue = _totalFiles;
-                });
-            while(file_queue.Count > 0)
+                this.Invoke(() => { this.progress_main.MaxValue = _totalFiles; });
+            while (file_queue.Count > 0)
             {
                 if (_terminated)
                 {
@@ -174,6 +179,7 @@ namespace RhoLoader
                     TerminateExtract();
                     return;
                 }
+
                 ExtractInfo extract_info = file_queue.Dequeue();
                 ReportProgress(extract_info.FileInfo.FullName, _totalFiles - file_queue.Count);
                 string filePath = extract_info.FileInfo.PackFileType == PackFileType.RhoFile
@@ -182,16 +188,17 @@ namespace RhoLoader
                 filePath = filePath.Replace("/", "\\");
                 string[] pathSp = filePath.Split('\\');
                 string tmpStr = "";
-                for(int i = 0; i < pathSp.Length; i++)
+                for (int i = 0; i < pathSp.Length; i++)
                 {
                     tmpStr += pathSp[i] + "\\";
                     if (!Directory.Exists($"{_extract_path}\\{tmpStr}"))
                         Directory.CreateDirectory($"{_extract_path}\\{tmpStr}");
                 }
+
                 FileStream out_fs = new FileStream(
-                    extract_info.FileInfo.PackFileType == PackFileType.RhoFile 
-                    ? $"{_extract_path}\\_rhoOut{extract_info.RelativePath}\\{extract_info.Out_filename}"
-                    : $"{_extract_path}\\_rho5Out{extract_info.RelativePath}\\{extract_info.Out_filename}"
+                    extract_info.FileInfo.PackFileType == PackFileType.RhoFile
+                        ? $"{_extract_path}\\_rhoOut{extract_info.RelativePath}\\{extract_info.Out_filename}"
+                        : $"{_extract_path}\\_rho5Out{extract_info.RelativePath}\\{extract_info.Out_filename}"
                     , FileMode.Create);
                 byte[] file_data = extract_info.FileInfo.GetData();
                 try
@@ -205,13 +212,14 @@ namespace RhoLoader
                     file_data = null;
                     proc_file_data = null;
                 }
-                catch (Exception ex) 
+                catch (Exception ex)
                 {
                     Debug.Print($"Error: {ex.Message}");
                     this._bg_worker_finished = true;
                     TerminateExtract();
                 }
             }
+
             ReportProgress("Finished", _totalFiles);
             _bg_worker_finished = true;
             FinishExtract();
@@ -253,7 +261,6 @@ namespace RhoLoader
                 text_extract_file.Text = current_output_file;
                 text_progress.Text = $"{file_no}/{_totalFiles}";
                 progress_main.Value = file_no - 1;
-
             }
         }
 
@@ -266,7 +273,8 @@ namespace RhoLoader
 
         private void action_cancel(object sender, EventArgs e)
         {
-            if(MessageBox.Show("msg_cancelExtract".GetStringBag(), "msg_level_question".GetStringBag(), MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+            if (MessageBox.Show("msg_cancelExtract".GetStringBag(), "msg_level_question".GetStringBag(),
+                    MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
             {
                 _terminated = true;
             }

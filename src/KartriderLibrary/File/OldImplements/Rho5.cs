@@ -39,6 +39,7 @@ namespace KartLibrary.File
                     anotherData = "t5rHKg-g9BA7%=qD";
                     break;
             }
+            
             Rho5DecryptStream decryptStream = new Rho5DecryptStream(BaseStream, fileInfo.Name, anotherData);
             BinaryReader br = new BinaryReader(decryptStream);
             int headerOffset = GetHeaderOffset(fileInfo.Name);
@@ -49,6 +50,7 @@ namespace KartLibrary.File
             int fileCounts = br.ReadInt32(); //d48
             if (packageHeaderCrc != PackageVersion + fileCounts)
                 throw new Exception("rho5 header crc mismatch.");
+            
             decryptStream.Seek(fileNameOffset, SeekOrigin.Begin);
             //decryptStream.SetToFileInfoKey(fileInfo.Name, "t5rHKg-g9BA7%=qD"); china: d$Bjgfc8@dH4TQ?k korea: y&errfV6GRS!e8JL taiwan: t5rHKg-g9BA7%=qD
             decryptStream.SetToFilesInfoKey(fileInfo.Name, anotherData);
