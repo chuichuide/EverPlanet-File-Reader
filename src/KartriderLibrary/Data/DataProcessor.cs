@@ -87,36 +87,43 @@ namespace KartLibrary.Data
         }
 
         // Extensions
-        public static byte[] ReadKRData(this BinaryReader br, int TotalLength)
+        public static byte[] ReadAAAData(this BinaryReader br, int TotalLength)
         {
             long initialPos = br.BaseStream.Position;
+            
             byte checkCode = br.ReadByte();
             if (checkCode != 0x53)
-                throw new Exception("It is not KRData Format.");
+                throw new Exception("It is not AAAData Format.");
+            
             byte ProcessMode = br.ReadByte();
             uint Hash = br.ReadUInt32();
+            
             bool Encrypted = (ProcessMode & 2) == 2;
             bool Compressed = (ProcessMode & 1) == 1;
+            
             uint EncryptKey = Encrypted ? br.ReadUInt32() : 0;
             int DecompressSize = Compressed ? br.ReadInt32() : 0;
+            
             byte[] originalData = br.ReadBytes((int)(TotalLength - (br.BaseStream.Position - initialPos)));
             byte[] processedData = originalData;
+            
             if (Encrypted)
             {
                 processedData = RhoEncrypt.DecryptData(EncryptKey, processedData);
             }
+            
             if (Compressed)
             {
-                using (MemoryStream ms = new MemoryStream(processedData))
-                {
-                    processedData = new byte[DecompressSize];
-                    Ionic.Zlib.ZlibStream zs = new Ionic.Zlib.ZlibStream(ms, Ionic.Zlib.CompressionMode.Decompress);
-                    zs.Read(processedData, 0, processedData.Length);
-                }
+                using MemoryStream ms = new MemoryStream(processedData);
+                processedData = new byte[DecompressSize];
+                Ionic.Zlib.ZlibStream zs = new Ionic.Zlib.ZlibStream(ms, Ionic.Zlib.CompressionMode.Decompress);
+                zs.ReadExactly(processedData, 0, processedData.Length);
             }
+            
             uint CheckHash = Adler.Adler32(0, processedData, 0, processedData.Length);
             if (CheckHash != Hash)
                 throw new Exception("Exception: KRData hash is not qualified.");
+            
             return processedData;
         }
 

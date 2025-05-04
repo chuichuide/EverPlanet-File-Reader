@@ -164,7 +164,7 @@ namespace KartLibrary.File
                 {
                     BinaryReader listFileRawReader = new BinaryReader(listFileStream);
                     int krDataLen = listFileRawReader.ReadInt32();
-                    byte[] listFileData = listFileRawReader.ReadKRData(krDataLen);
+                    byte[] listFileData = listFileRawReader.ReadAAAData(krDataLen);
                     BinaryXmlDocument bmlDoc = new BinaryXmlDocument();
                     bmlDoc.Read(Encoding.Unicode, listFileData);
 

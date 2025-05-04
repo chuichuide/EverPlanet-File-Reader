@@ -240,11 +240,11 @@ namespace RhoLoader
             // 
             // dialog_singleFile
             // 
-            dialog_singleFile.Filter = "RhoFile|*.Rho|Nho|*.nho";
+//            dialog_singleFile.Filter = "RhoFile|*.Rho|Nho|*.nho";
             // 
             // dialog_multiFile
             // 
-            dialog_multiFile.Filter = "RhoFile|*.Rho";
+//            dialog_multiFile.Filter = "RhoFile|*.Rho";
             dialog_multiFile.Multiselect = true;
             // 
             // imageList_listview

@@ -16,7 +16,7 @@ namespace KartLibrary.Record
             FileStream fs = new FileStream(FileName, FileMode.Open);
             BinaryReader reader = new BinaryReader(fs);
             int FileSize = reader.ReadInt32();
-            byte[] originalData = reader.ReadKRData(FileSize);
+            byte[] originalData = reader.ReadAAAData(FileSize);
             MemoryStream ms = new MemoryStream(originalData);
             BinaryReader memReader = new BinaryReader(ms);
             KSVInfo output = memReader.ReadKSVInfo();
@@ -30,7 +30,7 @@ namespace KartLibrary.Record
             MemoryStream dataMS= new MemoryStream(data);
             BinaryReader reader = new BinaryReader(dataMS);
             int FileSize = reader.ReadInt32();
-            byte[] originalData = reader.ReadKRData(FileSize);
+            byte[] originalData = reader.ReadAAAData(FileSize);
             MemoryStream ms = new MemoryStream(originalData);
             BinaryReader memReader = new BinaryReader(ms);
             KSVInfo output = memReader.ReadKSVInfo();
@@ -47,7 +47,7 @@ namespace KartLibrary.Record
             {
                 BinaryReader reader = new BinaryReader(fileStream);
                 int totalLen = reader.ReadInt32();
-                byte[] decryptData = reader.ReadKRData(totalLen);
+                byte[] decryptData = reader.ReadAAAData(totalLen);
                 using (MemoryStream decryptDataStream = new MemoryStream(decryptData))
                 {
                     BinaryReader dataReader = new BinaryReader(decryptDataStream);

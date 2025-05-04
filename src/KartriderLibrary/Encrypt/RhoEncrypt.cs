@@ -6,18 +6,18 @@ using System.Threading.Tasks;
 using System.IO;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
+
 namespace KartLibrary.Encrypt
 {
     public static class RhoEncrypt
     {
-
         /// <summary>
         /// Used to decrypt rho file data, or DataProcessed data.
         /// </summary>
         /// <param name="Data"></param>
         /// <param name="Key"></param>
         /// <returns></returns>
-        public static byte[] DecryptData(uint Key,byte[] Data)
+        public static byte[] DecryptData(uint Key, byte[] Data)
         {
             byte[] extendedKey = RhoKey.ExtendKey(Key);
             byte[] output = new byte[Data.Length];
@@ -25,10 +25,11 @@ namespace KartLibrary.Encrypt
             {
                 output[i] = (byte)(Data[i] ^ extendedKey[i & 63]);
             }
+
             return output;
         }
 
-        public unsafe static void DecryptData(uint Key,byte[] Data,int Offset,int Length)
+        public unsafe static void DecryptData(uint Key, byte[] Data, int Offset, int Length)
         {
             if ((Offset + Length) > Data.Length)
                 throw new Exception("Over range.");
@@ -38,7 +39,6 @@ namespace KartLibrary.Encrypt
                 int index = i + Offset;
                 Data[index] = (byte)(Data[index] ^ extendedKey[index & 63]);
             }
-            
         }
 
         /// <summary>
@@ -47,16 +47,16 @@ namespace KartLibrary.Encrypt
         /// <param name="Data"></param>
         /// <param name="Key"></param>
         /// <returns></returns>
-        public static unsafe byte[] DecryptHeaderInfo(byte[] Data,uint Key)
+        public static unsafe byte[] DecryptHeaderInfo(byte[] Data, uint Key)
         {
             uint currentKey = Key;
             uint a = 0;
             byte[] output = new byte[Data.Length];
-            fixed(byte *wPtr = output, rPtr = Data)
+            fixed (byte* wPtr = output, rPtr = Data)
             {
                 uint* writePtr = (uint*)wPtr;
                 uint* readPtr = (uint*)rPtr;
-                for(int i =0;i< Data.Length >> 2; i++)
+                for (int i = 0; i < Data.Length >> 2; i++)
                 {
                     uint vector = RhoKey.GetVector(currentKey);
                     uint curData = readPtr[i];
@@ -67,16 +67,17 @@ namespace KartLibrary.Encrypt
                     currentKey++;
                 }
             }
+
             return output;
         }
 
-        public static byte[] DecryptBlockInfoOld(byte[] Data,byte[] key)
+        public static byte[] DecryptBlockInfoOld(byte[] Data, byte[] key)
         {
             if (Data.Length != 0x20)
                 throw new NotSupportedException("Exception: the length of Data is not 32 bytes.");
             byte[] output = new byte[32];
             for (int i = 0; i < 32; i++)
-                output[i] =(byte)( key[i] ^ Data[i]);
+                output[i] = (byte)(key[i] ^ Data[i]);
             return output;
         }
 
@@ -90,10 +91,11 @@ namespace KartLibrary.Encrypt
         {
             byte[] extendedKey = RhoKey.ExtendKey(Key);
             byte[] output = new byte[Data.Length];
-            for(int i =0;i<Data.Length;i++)
+            for (int i = 0; i < Data.Length; i++)
             {
                 output[i] = (byte)(Data[i] ^ extendedKey[i & 63]);
             }
+
             return output;
         }
 
@@ -136,6 +138,7 @@ namespace KartLibrary.Encrypt
                     currentKey++;
                 }
             }
+
             return output;
         }
 

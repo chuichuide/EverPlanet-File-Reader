@@ -46,7 +46,7 @@ namespace KartLibrary.File
             FileStream fileStream = new FileStream(aaaPkFilePath, FileMode.Open);
             BinaryReader br = new BinaryReader(fileStream);
             int dataLen = br.ReadInt32();
-            byte[] aaapkData = br.ReadKRData(dataLen);
+            byte[] aaapkData = br.ReadAAAData(dataLen);
             fileStream.Close();
             BinaryXmlDocument bxmlDoc = new BinaryXmlDocument();
             bxmlDoc.Read(Encoding.GetEncoding("UTF-16"), aaapkData);
