@@ -14,6 +14,7 @@ namespace RhoLoader.Controls
 {
     public class DarkTreeView : TreeView
     {
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public new TreeViewDrawMode DrawMode { get => base.DrawMode; set { } }
         public DarkTreeView() : base()
         {

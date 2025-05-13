@@ -19,6 +19,7 @@ namespace RhoLoader.PreviewWindow
         string ConvertedXml="";
         string FileName = "";
         byte[] data;
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public bool Initized { get; set; } = false;
         public bmlViewer(byte[] data,string FileName)
         {

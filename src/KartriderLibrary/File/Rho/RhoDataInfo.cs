@@ -84,7 +84,8 @@ namespace KartLibrary.File
             byte[] blockData = reader.ReadBytes(blockInfo.DataSize);
             //Debug.Print($"B:{BlockIndex:x8}: {Adler.Adler32(0, BlockData, 0, BlockData.Length):x8}");
 
-            if ((blockInfo.BlockProperty & RhoBlockProperty.Compressed) == RhoBlockProperty.Compressed)
+            //EverPlanet不使用ZLib和任何壓縮方式
+/*            if ((blockInfo.BlockProperty & RhoBlockProperty.Compressed) == RhoBlockProperty.Compressed)
             {
                 using (MemoryStream ms = new MemoryStream(blockData))
                 {
@@ -92,7 +93,7 @@ namespace KartLibrary.File
                     Ionic.Zlib.ZlibStream ds = new Ionic.Zlib.ZlibStream(ms, Ionic.Zlib.CompressionMode.Decompress);
                     ds.Read(blockData, 0, blockData.Length);
                 }
-            }
+            }*/
 
             if ((blockInfo.BlockProperty & RhoBlockProperty.PartialEncrypted) ==
                 RhoBlockProperty.PartialEncrypted) // Encrypted or PartialEncrypted
@@ -100,11 +101,15 @@ namespace KartLibrary.File
                 RhoEncrypt.DecryptData(key, blockData, 0, blockData.Length);
             }
 
+            //PNG用 但有些檔案會出錯 pk_034e80ec.chi/TileRegionHigh.png
             if (blockInfo.BlockProperty == RhoBlockProperty.PartialEncrypted) // PartialEncrypted
             {
                 RhoDataInfo secPartInfo = rhoFile.GetBlockInfo(blockIndex + 1);
-                Array.Resize(ref blockData, blockInfo.DataSize + secPartInfo.DataSize);
-                reader.BaseStream.Read(blockData, blockInfo.DataSize, secPartInfo.DataSize);
+                if (secPartInfo != null)
+                {
+                    Array.Resize(ref blockData, blockInfo.DataSize + secPartInfo.DataSize);
+                    reader.BaseStream.ReadExactly(blockData, blockInfo.DataSize, secPartInfo.DataSize);
+                }
             }
 
             //Debug.Print($"A:{BlockIndex:x8}: {Adler.Adler32(0, BlockData, 0, BlockData.Length):x8}");

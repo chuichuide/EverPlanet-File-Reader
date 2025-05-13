@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net7.0</TargetFramework>
+    <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <RootNamespace>KartLibrary</RootNamespace>
@@ -10,6 +10,7 @@
     <AssemblyVersion>24.1.31.1</AssemblyVersion>
     <FileVersion>24.1.31.1</FileVersion>
     <SignAssembly>False</SignAssembly>
+    <LangVersion>default</LangVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">

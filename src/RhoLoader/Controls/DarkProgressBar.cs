@@ -13,6 +13,7 @@ namespace RhoLoader.Controls
     public partial class DarkProgressBar : UserControl
     {
         private double m_value = 0d;
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public double Value
         {
             get
@@ -29,6 +30,7 @@ namespace RhoLoader.Controls
             }
         }
         private double m_max_value = 100d;
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public double MaxValue
         {
             get

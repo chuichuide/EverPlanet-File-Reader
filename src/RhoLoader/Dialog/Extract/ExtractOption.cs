@@ -13,6 +13,7 @@ namespace RhoLoader
 {
     public partial class ExtractOption : Form
     {
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public ExtractOptionToken SelectOption { get; set; } = ExtractOptionToken.None;
         public ExtractOption()
         {

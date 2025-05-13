@@ -24,7 +24,7 @@ namespace KartLibrary.File
             (1.2d, "Ch layer spec 1.2"), //for EverPlanet
         };
 
-        public double Version { get; private set; }
+        private double Version { get; set; }
         public string FileName { get; private set; }
 
         private uint RhoFileKey = 0;
@@ -83,7 +83,7 @@ namespace KartLibrary.File
                     part2Data = RhoEncrypt.DecryptHeaderInfo(part2Data, RhoFileKey);
                     break;
                 case 1.2d:
-                    uint baseKey = uint.Parse(fileInfo.Name.Replace("pk_", "").Replace(".chi", ""),
+                    var baseKey = uint.Parse(fileInfo.Name.Replace("pk_", "").Replace(".chi", ""),
                         NumberStyles.HexNumber);
                     uint[] keyOffsets =
                     {
@@ -207,9 +207,9 @@ namespace KartLibrary.File
 
         internal RhoDataInfo GetBlockInfo(uint Index)
         {
-            if (!Blocks.ContainsKey(Index))
+            if (!Blocks.TryGetValue(Index, out var info))
                 return null;
-            return Blocks[Index];
+            return info;
         }
 
         internal byte[] GetBlockData(uint BlockIndex, uint Key)

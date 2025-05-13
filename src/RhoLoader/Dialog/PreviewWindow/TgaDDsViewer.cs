@@ -23,8 +23,10 @@ namespace RhoLoader.PreviewWindow
             InitializeComponent();
         }
 
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public byte[] Data { get; set; }
 
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public FileType Type { get; set; }
 
         private double scale_N = 1.0d;
